@@ -1,17 +1,14 @@
 package cmd
 
 import (
+	"bufio"
 	"fmt"
 	"os"
+	"path/filepath"
 
-	package cmd
-
-import (
-	"fmt"
-	"os"
-
-	"github.com/rohit/sshx/internal/config"
-	"github.com/rohit/sshx/internal/git"
+	"github.com/RohitDarekar816/sshx/internal/config"
+	"github.com/RohitDarekar816/sshx/internal/git"
+	"github.com/RohitDarekar816/sshx/internal/user"
 	"github.com/spf13/cobra"
 )
 
@@ -26,61 +23,51 @@ var authCmd = &cobra.Command{
 
 		fmt.Println("Initializing sshx...")
 
-		// create ~/.sshx
-		err := config.InitBaseDir()
-		if err != nil {
-			fmt.Println("Error creating sshx directory:", err)
-			os.Exit(1)
-		}
+		config.InitBaseDir()
 
 		repoDir := config.GetRepoDir()
 
-		// clone repo
-		err = git.CloneRepo(repoURL, repoDir)
+		err := git.CloneRepo(repoURL, repoDir)
 		if err != nil {
 			fmt.Println("Error cloning repo:", err)
-			os.Exit(1)
+			return
 		}
 
-		fmt.Println("sshx authenticated successfully!")
-		fmt.Println("Repo:", repoURL)
-	},
-}
+		usersFilePath := filepath.Join(repoDir, "users.json")
 
-func init() {
-	rootCmd.AddCommand(authCmd)
-}
-)
-
-var authCmd = &cobra.Command{
-	Use:   "auth [repo-url]",
-	Short: "Authenticate sshx with a git repository",
-	Args:  cobra.ExactArgs(1),
-
-	Run: func(cmd *cobra.Command, args []string) {
-
-		repoURL := args[0]
-
-		fmt.Println("Initializing sshx...")
-
-		// create ~/.sshx
-		err := config.InitBaseDir()
+		users, err := user.LoadUsers(usersFilePath)
 		if err != nil {
-			fmt.Println("Error creating sshx directory:", err)
-			os.Exit(1)
+			fmt.Println("Error reading users:", err)
+			return
 		}
 
-		repoDir := config.GetRepoDir()
+		reader := bufio.NewReader(os.Stdin)
 
-		// clone repo
-		err = git.CloneRepo(repoURL, repoDir)
-		if err != nil {
-			fmt.Println("Error cloning repo:", err)
-			os.Exit(1)
+		fmt.Print("Enter your name: ")
+		name, _ := reader.ReadString('\n')
+
+		fmt.Print("Enter your email: ")
+		email, _ := reader.ReadString('\n')
+
+		name = name[:len(name)-1]
+		email = email[:len(email)-1]
+
+		if user.UserExists(users, email) {
+
+			fmt.Println("User already registered")
+
+		} else {
+
+			user.AddUser(users, name, email)
+
+			user.SaveUsers(usersFilePath, users)
+
+			git.CommitAndPush(repoDir, "Add new sshx user")
+
+			fmt.Println("User registered successfully")
 		}
 
-		fmt.Println("sshx authenticated successfully!")
-		fmt.Println("Repo:", repoURL)
+		fmt.Println("sshx authentication complete")
 	},
 }
 
