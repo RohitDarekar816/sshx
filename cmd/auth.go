@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/RohitDarekar816/sshx/internal/config"
 	"github.com/RohitDarekar816/sshx/internal/git"
@@ -27,9 +28,11 @@ var authCmd = &cobra.Command{
 
 		repoDir := config.GetRepoDir()
 
-		err := git.CloneRepo(repoURL, repoDir)
+		fmt.Println("Cloning repository:", repoURL)
+
+		err := git.CloneOrInitRepo(repoURL, repoDir)
 		if err != nil {
-			fmt.Println("Error cloning repo:", err)
+			fmt.Println("Error preparing repo:", err)
 			return
 		}
 
@@ -49,8 +52,8 @@ var authCmd = &cobra.Command{
 		fmt.Print("Enter your email: ")
 		email, _ := reader.ReadString('\n')
 
-		name = name[:len(name)-1]
-		email = email[:len(email)-1]
+		name = strings.TrimSpace(name)
+		email = strings.TrimSpace(email)
 
 		if user.UserExists(users, email) {
 
@@ -60,9 +63,17 @@ var authCmd = &cobra.Command{
 
 			user.AddUser(users, name, email)
 
-			user.SaveUsers(usersFilePath, users)
+			err = user.SaveUsers(usersFilePath, users)
+			if err != nil {
+				fmt.Println("Error saving users:", err)
+				return
+			}
 
-			git.CommitAndPush(repoDir, "Add new sshx user")
+			err = git.CommitAndPush(repoDir, "Add new sshx user")
+			if err != nil {
+				fmt.Println("Error pushing changes:", err)
+				return
+			}
 
 			fmt.Println("User registered successfully")
 		}

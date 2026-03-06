@@ -1,22 +1,23 @@
 package server
 
 import (
+	"encoding/json"
 	"os"
-
-	"gopkg.in/yaml.v3"
+	"path/filepath"
 )
 
-func LoadServer(path string) (*Server, error) {
+func LoadServer(repoDir string, name string) (*Server, error) {
 
-	data, err := os.ReadFile(path)
+	file := filepath.Join(repoDir, "servers", name+".json")
+
+	data, err := os.ReadFile(file)
 	if err != nil {
 		return nil, err
 	}
 
 	var s Server
 
-	err = yaml.Unmarshal(data, &s)
-
+	err = json.Unmarshal(data, &s)
 	if err != nil {
 		return nil, err
 	}

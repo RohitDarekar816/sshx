@@ -1,40 +1,62 @@
-/*
-Copyright © 2026 NAME HERE <EMAIL ADDRESS>
-
-*/
 package cmd
 
 import (
 	"fmt"
 
+	"github.com/RohitDarekar816/sshx/internal/config"
+	"github.com/RohitDarekar816/sshx/internal/git"
+	"github.com/RohitDarekar816/sshx/internal/server"
 	"github.com/spf13/cobra"
 )
 
-// addCmd represents the add command
-var addCmd = &cobra.Command{
-	Use:   "add",
-	Short: "A brief description of your command",
-	Long: `A longer description that spans multiple lines and likely contains examples
-and usage of using your command. For example:
+var host string
+var user string
+var port int
+var key string
 
-Cobra is a CLI library for Go that empowers applications.
-This application is a tool to generate the needed files
-to quickly create a Cobra application.`,
+var addCmd = &cobra.Command{
+	Use:   "add [name]",
+	Short: "Add a new server",
+	Args:  cobra.ExactArgs(1),
+
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("add called")
+
+		name := args[0]
+
+		repoDir := config.GetRepoDir()
+
+		s := server.Server{
+			Name: name,
+			Host: host,
+			User: user,
+			Port: port,
+			Key:  key,
+		}
+
+		err := server.SaveServer(repoDir, s)
+		if err != nil {
+			fmt.Println("Error saving server:", err)
+			return
+		}
+
+		err = git.CommitAndPush(repoDir, "Add server "+name)
+		if err != nil {
+			fmt.Println("Git error:", err)
+			return
+		}
+
+		fmt.Println("Server added:", name)
 	},
 }
 
 func init() {
+
+	addCmd.Flags().StringVar(&host, "host", "", "Server host")
+	addCmd.Flags().StringVar(&user, "user", "root", "SSH user")
+	addCmd.Flags().IntVar(&port, "port", 22, "SSH port")
+	addCmd.Flags().StringVar(&key, "key", "~/.ssh/id_rsa", "SSH key")
+
+	addCmd.MarkFlagRequired("host")
+
 	rootCmd.AddCommand(addCmd)
-
-	// Here you will define your flags and configuration settings.
-
-	// Cobra supports Persistent Flags which will work for this command
-	// and all subcommands, e.g.:
-	// addCmd.PersistentFlags().String("foo", "", "A help for foo")
-
-	// Cobra supports local flags which will only run when this command
-	// is called directly, e.g.:
-	// addCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 }
