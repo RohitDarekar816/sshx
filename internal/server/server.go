@@ -7,11 +7,12 @@ import (
 )
 
 type Server struct {
-	Name string `json:"name"`
-	Host string `json:"host"`
-	User string `json:"user"`
-	Port int    `json:"port"`
-	Key  string `json:"key"`
+	Name     string `json:"name"`
+	Host     string `json:"host"`
+	User     string `json:"user"`
+	Port     int    `json:"port"`
+	Key      string `json:"key,omitempty"`
+	Password string `json:"password,omitempty"`
 }
 
 func SaveServer(repoDir string, s Server) error {

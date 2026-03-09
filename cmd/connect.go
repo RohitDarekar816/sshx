@@ -2,11 +2,10 @@ package cmd
 
 import (
 	"fmt"
-	"os"
-	"os/exec"
 
 	"github.com/RohitDarekar816/sshx/internal/config"
 	"github.com/RohitDarekar816/sshx/internal/server"
+	"github.com/RohitDarekar816/sshx/internal/ssh"
 	"github.com/spf13/cobra"
 )
 
@@ -27,15 +26,7 @@ var connectCmd = &cobra.Command{
 			return
 		}
 
-		address := fmt.Sprintf("%s@%s", s.User, s.Host)
-
-		c := exec.Command("ssh", address)
-
-		c.Stdin = os.Stdin
-		c.Stdout = os.Stdout
-		c.Stderr = os.Stderr
-
-		c.Run()
+		ssh.Connect(s)
 	},
 }
 

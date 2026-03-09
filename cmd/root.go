@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"fmt"
-	"path/filepath"
 
 	"github.com/RohitDarekar816/sshx/internal/config"
 	"github.com/RohitDarekar816/sshx/internal/server"
@@ -21,14 +20,9 @@ var rootCmd = &cobra.Command{
 		}
 
 		serverName := args[0]
+		repoDir := config.GetRepoDir()
 
-		serverPath := filepath.Join(
-			config.GetRepoDir(),
-			"servers",
-			serverName+".yaml",
-		)
-
-		s, err := server.LoadServer(serverPath)
+		s, err := server.LoadServer(repoDir, serverName)
 
 		if err != nil {
 			fmt.Println("Server not found:", serverName)
