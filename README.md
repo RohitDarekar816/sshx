@@ -74,6 +74,10 @@ List all servers in the repo.
 ### `sshx connect [server]`
 Connect to a server by name.
 
+Flags:
+
+- No flags. Prompts for vault passphrase and TOTP code.
+
 ### `sshx [server]`
 Direct shortcut to connect.
 
