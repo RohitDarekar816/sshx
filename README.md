@@ -2,7 +2,7 @@
 
 Git-backed SSH profile manager for teams.
 
-sshx stores server profiles in a Git repository so teams can share and version-control SSH access. It provides a fast CLI to add, list, edit, remove, and connect to servers, with optional encrypted passwords.
+sshx stores server profiles in a Git repository so teams can share and version-control SSH access. It provides a fast CLI to add, list, edit, remove, and connect to servers, with encrypted passwords, encrypted private keys, and TOTP-based MFA.
 
 ---
 
@@ -11,7 +11,7 @@ sshx stores server profiles in a Git repository so teams can share and version-c
 - **Git-native**: all changes are committed and pushed.
 - **Team-friendly**: share profiles through a repo instead of local configs.
 - **Fast CLI**: connect with `sshx <server>` or `sshx connect <server>`.
-- **Secure options**: encrypt passwords at rest; supports SSH keys by default.
+- **Secure options**: encrypt passwords and private keys at rest with MFA for unlock.
 
 ---
 
@@ -29,7 +29,7 @@ go build -o sshx
 ./sshx auth git@github.com:USER/sshx-profiles.git
 ```
 
-This creates or clones the repo and registers you in `users.json`.
+This creates or clones the repo, registers you in `users.json`, and sets up TOTP MFA.
 
 ### 3) Add a server
 
@@ -54,7 +54,7 @@ This creates or clones the repo and registers you in `users.json`.
 ## Commands
 
 ### `sshx auth [repo-url]`
-Authenticate with the Git repository that stores profiles.
+Authenticate with the Git repository that stores profiles. This also sets up TOTP MFA on first run.
 
 ### `sshx add [name]`
 Add a new server profile.
@@ -65,6 +65,7 @@ Common flags:
 - `--user` (default: `root`)
 - `--port` (default: `22`)
 - `--key` (default: `~/.ssh/id_rsa`)
+- `--key-ref` (reference to an encrypted key stored in the repo)
 - `--password` (optional, stored encrypted)
 
 ### `sshx list`
@@ -81,12 +82,23 @@ Edit server fields.
 
 Flags:
 
-- `--host`, `--user`, `--port`, `--key`
+- `--host`, `--user`, `--port`, `--key`, `--key-ref`
 - `--password` to set an encrypted password
 - `--clear-password` to remove stored password
+- `--clear-key-ref` to remove stored key reference
 
 ### `sshx remove [server]`
 Remove a server profile.
+
+### `sshx key add|list|remove`
+Manage encrypted private keys stored in the repo.
+
+Example:
+
+```bash
+./sshx key add prod --file ~/.ssh/id_rsa
+./sshx key list
+```
 
 ---
 
@@ -102,6 +114,7 @@ host: 1.2.3.4
 user: ubuntu
 port: 22
 key: ~/.ssh/id_rsa
+key_ref: prod
 ```
 
 sshx can still read existing JSON profiles for backward compatibility.
@@ -117,6 +130,24 @@ To connect using a stored password, `sshpass` must be installed:
 ```bash
 sudo apt install sshpass
 ```
+
+---
+
+## Encrypted Key Storage
+
+Private keys can be stored in the Git repo encrypted at rest. Use `sshx key add` to encrypt and store a key, then reference it from a server profile with `--key-ref`.
+
+Keys are stored under:
+
+```
+keys/
+```
+
+---
+
+## MFA (TOTP)
+
+TOTP is required for sensitive operations and for connecting to servers. On first `sshx auth`, the CLI shows a QR code in the terminal, plus the otpauth URL and manual secret for fallback.
 
 ---
 
