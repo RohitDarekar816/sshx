@@ -13,6 +13,7 @@ type Server struct {
 	User     string `json:"user" yaml:"user"`
 	Port     int    `json:"port" yaml:"port"`
 	Key      string `json:"key,omitempty" yaml:"key,omitempty"`
+	KeyRef   string `json:"key_ref,omitempty" yaml:"key_ref,omitempty"`
 	Password string `json:"password,omitempty" yaml:"password,omitempty"`
 }
 

@@ -11,7 +11,7 @@ import (
 	"github.com/RohitDarekar816/sshx/internal/server"
 )
 
-func Connect(s *server.Server) {
+func Connect(s *server.Server, passphrase string) {
 
 	target := fmt.Sprintf("%s@%s", s.User, s.Host)
 
@@ -30,10 +30,12 @@ func Connect(s *server.Server) {
 	var cmd *exec.Cmd
 
 	if s.Password != "" {
-		reader := bufio.NewReader(os.Stdin)
-		fmt.Print("Enter decryption passphrase: ")
-		passphrase, _ := reader.ReadString('\n')
-		passphrase = strings.TrimSpace(passphrase)
+		if passphrase == "" {
+			reader := bufio.NewReader(os.Stdin)
+			fmt.Print("Enter decryption passphrase: ")
+			passphrase, _ = reader.ReadString('\n')
+			passphrase = strings.TrimSpace(passphrase)
+		}
 
 		plainPassword, err := crypto.Decrypt(s.Password, passphrase)
 		if err != nil {

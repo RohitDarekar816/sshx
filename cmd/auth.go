@@ -6,10 +6,14 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/RohitDarekar816/sshx/internal/config"
+	"github.com/RohitDarekar816/sshx/internal/crypto"
 	"github.com/RohitDarekar816/sshx/internal/git"
+	"github.com/RohitDarekar816/sshx/internal/totp"
 	"github.com/RohitDarekar816/sshx/internal/user"
+	"github.com/mdp/qrterminal/v3"
 	"github.com/spf13/cobra"
 )
 
@@ -25,6 +29,15 @@ var authCmd = &cobra.Command{
 		fmt.Println("Initializing sshx...")
 
 		config.InitBaseDir()
+
+		reader := bufio.NewReader(os.Stdin)
+		fmt.Print("Confirm repository is private (yes/no): ")
+		confirm, _ := reader.ReadString('\n')
+		confirm = strings.TrimSpace(strings.ToLower(confirm))
+		if confirm != "yes" && confirm != "y" {
+			fmt.Println("sshx requires a private repository")
+			return
+		}
 
 		repoDir := config.GetRepoDir()
 
@@ -43,8 +56,6 @@ var authCmd = &cobra.Command{
 			fmt.Println("Error reading users:", err)
 			return
 		}
-
-		reader := bufio.NewReader(os.Stdin)
 
 		fmt.Print("Enter your name: ")
 		name, _ := reader.ReadString('\n')
@@ -78,10 +89,77 @@ var authCmd = &cobra.Command{
 			fmt.Println("User registered successfully")
 		}
 
+		cfg := &config.Config{
+			RepoURL:   repoURL,
+			RepoDir:   repoDir,
+			UserName:  name,
+			UserEmail: email,
+		}
+		if err := config.SaveConfig(cfg); err != nil {
+			fmt.Println("Error saving local config:", err)
+			return
+		}
+
+		if !totp.HasSecret(repoDir, email) {
+			if err := setupTOTP(repoDir, email, reader); err != nil {
+				fmt.Println("TOTP setup failed:", err)
+				return
+			}
+
+			if err := git.CommitAndPush(repoDir, "Add TOTP secret for "+email); err != nil {
+				fmt.Println("Error pushing changes:", err)
+				return
+			}
+		}
+
 		fmt.Println("sshx authentication complete")
 	},
 }
 
 func init() {
 	rootCmd.AddCommand(authCmd)
+}
+
+func setupTOTP(repoDir string, email string, reader *bufio.Reader) error {
+
+	secret, err := totp.GenerateSecret()
+	if err != nil {
+		return err
+	}
+
+	fmt.Println("TOTP setup required.")
+	fmt.Println("Scan this QR code with your authenticator app:")
+	otpURL := totp.OTPAuthURL("sshx", email, secret)
+	qrterminal.GenerateHalfBlock(otpURL, qrterminal.L, os.Stdout)
+	fmt.Println("If you cannot scan the QR code, use this URL:")
+	fmt.Println(otpURL)
+	fmt.Println("Manual secret:", secret)
+
+	fmt.Print("Enter the current TOTP code to verify: ")
+	code, _ := reader.ReadString('\n')
+	code = strings.TrimSpace(code)
+	if !totp.Validate(secret, code, time.Now()) {
+		return fmt.Errorf("invalid TOTP code")
+	}
+
+	fmt.Print("Create vault passphrase: ")
+	passphrase, _ := reader.ReadString('\n')
+	passphrase = strings.TrimSpace(passphrase)
+	if passphrase == "" {
+		return fmt.Errorf("passphrase cannot be empty")
+	}
+
+	fmt.Print("Confirm passphrase: ")
+	confirm, _ := reader.ReadString('\n')
+	confirm = strings.TrimSpace(confirm)
+	if confirm != passphrase {
+		return fmt.Errorf("passphrases do not match")
+	}
+
+	encrypted, err := crypto.Encrypt(secret, passphrase)
+	if err != nil {
+		return err
+	}
+
+	return totp.SaveEncryptedSecret(repoDir, email, encrypted)
 }

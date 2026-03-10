@@ -147,6 +147,20 @@ This would automatically register servers from cloud infrastructure.
 
 ---
 
+# Phase 9
+
+Encrypted key storage + TOTP.
+
+Store private keys in the repo encrypted with strong algorithms. Add TOTP as a second factor for sensitive operations.
+
+Planned changes:
+
+- `sshx auth` prompts TOTP setup on first run
+- `sshx connect` requires passphrase + TOTP when decrypting keys
+- Encrypted key files stored under `keys/`
+
+---
+
 # Long-Term Vision
 
 sshx aims to become a lightweight Git-powered access management tool for infrastructure teams.

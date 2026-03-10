@@ -17,6 +17,7 @@ var host string
 var sshUser string
 var port int
 var key string
+var keyRef string
 var password string
 
 var addCmd = &cobra.Command{
@@ -36,11 +37,21 @@ var addCmd = &cobra.Command{
 			User:     sshUser,
 			Port:     port,
 			Key:      key,
+			KeyRef:   keyRef,
 			Password: password,
 		}
 
-		if password != "" && key != "~/.ssh/id_rsa" {
-			fmt.Println("Warning: both --key and --password provided. Password will be used.")
+		if keyRef != "" && cmd.Flags().Changed("key") {
+			fmt.Println("Error: --key and --key-ref cannot be used together")
+			return
+		}
+
+		if keyRef != "" {
+			s.Key = ""
+		}
+
+		if password != "" && (cmd.Flags().Changed("key") || keyRef != "") {
+			fmt.Println("Warning: password provided. SSH key will be ignored.")
 		}
 
 		if password != "" {
@@ -97,6 +108,7 @@ func init() {
 	addCmd.Flags().StringVar(&sshUser, "user", "root", "SSH user")
 	addCmd.Flags().IntVar(&port, "port", 22, "SSH port")
 	addCmd.Flags().StringVar(&key, "key", "~/.ssh/id_rsa", "SSH key")
+	addCmd.Flags().StringVar(&keyRef, "key-ref", "", "Reference to encrypted key stored in repo")
 	addCmd.Flags().StringVar(&password, "password", "", "SSH password")
 
 	addCmd.MarkFlagRequired("host")
