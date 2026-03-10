@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"time"
 
 	gogit "github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/config"
@@ -87,6 +88,12 @@ func CloneOrInitRepo(repoURL string, repoDir string) error {
 		Author: &object.Signature{
 			Name:  "sshx",
 			Email: "sshx@local",
+			When:  time.Now(),
+		},
+		Committer: &object.Signature{
+			Name:  "sshx",
+			Email: "sshx@local",
+			When:  time.Now(),
 		},
 	})
 

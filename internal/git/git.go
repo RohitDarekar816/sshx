@@ -3,6 +3,7 @@ package git
 import (
 	"fmt"
 	"os"
+	"time"
 
 	git "github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing/object"
@@ -57,6 +58,12 @@ func CommitAndPush(repoPath string, message string) error {
 		Author: &object.Signature{
 			Name:  "sshx",
 			Email: "sshx@local",
+			When:  time.Now(),
+		},
+		Committer: &object.Signature{
+			Name:  "sshx",
+			Email: "sshx@local",
+			When:  time.Now(),
 		},
 	})
 

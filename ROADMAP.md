@@ -44,7 +44,7 @@ servers/
 
 ---
 
-# Phase 3 (Next)
+# Phase 3 (Completed)
 
 Improve CLI experience.
 
@@ -66,7 +66,7 @@ Unknown command fallback will attempt to resolve server name.
 
 ---
 
-# Phase 4
+# Phase 4 (Completed)
 
 Server management improvements.
 
@@ -80,11 +80,16 @@ This allows modifying existing server configurations.
 
 ---
 
-# Phase 5
+# Phase 5 (In Progress)
 
 Configuration format improvements.
 
 Change server profiles from JSON to YAML.
+
+Status:
+
+- YAML read/write support in CLI
+- Backward-compatible loading of existing JSON profiles
 
 Example:
 

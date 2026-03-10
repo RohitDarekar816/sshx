@@ -4,25 +4,31 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"strings"
+
+	"gopkg.in/yaml.v3"
 )
 
 func LoadServer(repoDir string, name string) (*Server, error) {
 
-	file := filepath.Join(repoDir, "servers", name+".json")
-
-	data, err := os.ReadFile(file)
-	if err != nil {
-		return nil, err
+	serverDir := filepath.Join(repoDir, "servers")
+	candidates := []string{
+		filepath.Join(serverDir, name+".yaml"),
+		filepath.Join(serverDir, name+".yml"),
+		filepath.Join(serverDir, name+".json"),
 	}
 
-	var s Server
-
-	err = json.Unmarshal(data, &s)
-	if err != nil {
-		return nil, err
+	for _, file := range candidates {
+		s, err := loadServerFile(file)
+		if err == nil {
+			return s, nil
+		}
+		if err != nil && !os.IsNotExist(err) {
+			return nil, err
+		}
 	}
 
-	return &s, nil
+	return nil, os.ErrNotExist
 }
 
 func LoadServers(repoDir string) ([]Server, error) {
@@ -34,7 +40,9 @@ func LoadServers(repoDir string) ([]Server, error) {
 		return nil, err
 	}
 
-	var servers []Server
+	byName := map[string]Server{}
+	sourceExt := map[string]string{}
+	order := []string{}
 
 	for _, entry := range entries {
 		if entry.IsDir() {
@@ -42,22 +50,94 @@ func LoadServers(repoDir string) ([]Server, error) {
 		}
 
 		ext := filepath.Ext(entry.Name())
-		if ext != ".json" {
+		if ext != ".json" && ext != ".yaml" && ext != ".yml" {
 			continue
 		}
 
-		data, err := os.ReadFile(filepath.Join(serverDir, entry.Name()))
+		fullPath := filepath.Join(serverDir, entry.Name())
+		s, err := loadServerFile(fullPath)
 		if err != nil {
 			continue
 		}
 
-		var s Server
-		if err := json.Unmarshal(data, &s); err != nil {
-			continue
+		if _, ok := byName[s.Name]; !ok {
+			order = append(order, s.Name)
 		}
 
-		servers = append(servers, s)
+		// Prefer YAML over JSON when duplicates exist.
+		if existingExt, ok := sourceExt[s.Name]; ok {
+			if (existingExt == ".yaml" || existingExt == ".yml") && ext == ".json" {
+				continue
+			}
+		}
+
+		byName[s.Name] = *s
+		sourceExt[s.Name] = ext
+	}
+
+	servers := make([]Server, 0, len(byName))
+	for _, name := range order {
+		if s, ok := byName[name]; ok {
+			servers = append(servers, s)
+		}
 	}
 
 	return servers, nil
+}
+
+func RemoveServer(repoDir string, name string) error {
+
+	serverDir := filepath.Join(repoDir, "servers")
+	candidates := []string{
+		filepath.Join(serverDir, name+".yaml"),
+		filepath.Join(serverDir, name+".yml"),
+		filepath.Join(serverDir, name+".json"),
+	}
+
+	var removed bool
+	var lastErr error
+	for _, file := range candidates {
+		if err := os.Remove(file); err == nil {
+			removed = true
+		} else if !os.IsNotExist(err) {
+			lastErr = err
+		}
+	}
+
+	if removed {
+		return nil
+	}
+
+	if lastErr != nil {
+		return lastErr
+	}
+
+	return os.ErrNotExist
+}
+
+func loadServerFile(path string) (*Server, error) {
+
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil, err
+	}
+
+	var s Server
+	ext := strings.ToLower(filepath.Ext(path))
+	if ext == ".yaml" || ext == ".yml" {
+		if err := yaml.Unmarshal(data, &s); err != nil {
+			return nil, err
+		}
+	} else {
+		if err := json.Unmarshal(data, &s); err != nil {
+			return nil, err
+		}
+	}
+
+	if s.Name == "" {
+		base := filepath.Base(path)
+		s.Name = strings.TrimSuffix(base, filepath.Ext(base))
+	}
+
+	return &s, nil
 }
