@@ -21,7 +21,8 @@ func LoadServer(repoDir string, name string) (*Server, error) {
 	for _, file := range candidates {
 		s, err := loadServerFile(file)
 		if err == nil {
-			return s, nil
+			repaired, _ := ValidateAndRepair(*s)
+			return repaired, nil
 		}
 		if err != nil && !os.IsNotExist(err) {
 			return nil, err
@@ -59,6 +60,9 @@ func LoadServers(repoDir string) ([]Server, error) {
 		if err != nil {
 			continue
 		}
+
+		repaired, _ := ValidateAndRepair(*s)
+		s = repaired
 
 		if _, ok := byName[s.Name]; !ok {
 			order = append(order, s.Name)

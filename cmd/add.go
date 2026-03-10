@@ -86,7 +86,13 @@ var addCmd = &cobra.Command{
 			s.Password = encrypted
 		}
 
-		err := server.SaveServer(repoDir, s)
+		checked, err := server.ValidateAndRepair(s)
+		if err != nil {
+			fmt.Println("Invalid server:", err)
+			return
+		}
+
+		err = server.SaveServer(repoDir, *checked)
 		if err != nil {
 			fmt.Println("Error saving server:", err)
 			return

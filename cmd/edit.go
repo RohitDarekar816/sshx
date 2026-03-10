@@ -123,7 +123,13 @@ var editCmd = &cobra.Command{
 			fmt.Println("Warning: server has a stored password; key will be ignored unless password is cleared.")
 		}
 
-		if err := server.SaveServer(repoDir, *s); err != nil {
+		checked, err := server.ValidateAndRepair(*s)
+		if err != nil {
+			fmt.Println("Invalid server:", err)
+			return
+		}
+
+		if err := server.SaveServer(repoDir, *checked); err != nil {
 			fmt.Println("Error saving server:", err)
 			return
 		}

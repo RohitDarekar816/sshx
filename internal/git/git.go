@@ -3,6 +3,7 @@ package git
 import (
 	"fmt"
 	"os"
+	"strings"
 	"time"
 
 	git "github.com/go-git/go-git/v5"
@@ -74,10 +75,23 @@ func CommitAndPush(repoPath string, message string) error {
 	// Push changes
 	err = repo.Push(&git.PushOptions{})
 	if err != nil && err != git.NoErrAlreadyUpToDate {
-		return err
+		if isNonFastForward(err) {
+			if pullErr := PullRebase(repo); pullErr != nil {
+				return fmt.Errorf("push rejected and rebase failed: %w", pullErr)
+			}
+
+			err = repo.Push(&git.PushOptions{})
+		}
+		if err != nil && err != git.NoErrAlreadyUpToDate {
+			return err
+		}
 	}
 
 	fmt.Println("Changes pushed to repo")
 
 	return nil
+}
+
+func isNonFastForward(err error) bool {
+	return strings.Contains(strings.ToLower(err.Error()), "non-fast-forward")
 }
