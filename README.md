@@ -187,8 +187,22 @@ Next planned features:
 - Group-based access control
 - SSH key distribution
 - Cloud provider imports
+- Sync and conflict resolution helper
+- Profile schema validation and auto-repair
 
 See `ROADMAP.md` for details.
+
+---
+
+## Validation and Auto-Repair
+
+sshx validates server profiles on load and before saving. It auto-repairs common issues like missing defaults (user, port) and inconsistent auth fields.
+
+---
+
+## Conflict Resolution
+
+When pushing changes, sshx detects non-fast-forward errors, performs a pull with rebase, and retries the push automatically.
 
 ---
 
