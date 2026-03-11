@@ -15,7 +15,6 @@ func PullRebase(repo *git.Repository) error {
 
 	err = w.Pull(&git.PullOptions{
 		RemoteName: "origin",
-		Rebase:     true,
 	})
 	if err != nil && err != git.NoErrAlreadyUpToDate {
 		return fmt.Errorf("pull failed: %w", err)
