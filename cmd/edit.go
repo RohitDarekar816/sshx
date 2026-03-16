@@ -43,12 +43,12 @@ var editCmd = &cobra.Command{
 			return
 		}
 
-		if clearKeyRef && cmd.Flags().Changed("key-ref") {
+		if clearKeyRef && cmd.Flags().Changed(flagKeyRef) {
 			fmt.Println("Error: --clear-key-ref cannot be used with --key-ref")
 			return
 		}
 
-		if cmd.Flags().Changed("key") && cmd.Flags().Changed("key-ref") {
+		if cmd.Flags().Changed("key") && cmd.Flags().Changed(flagKeyRef) {
 			fmt.Println("Error: --key and --key-ref cannot be used together")
 			return
 		}
@@ -69,7 +69,7 @@ var editCmd = &cobra.Command{
 			s.Key = editKey
 		}
 
-		if cmd.Flags().Changed("key-ref") {
+		if cmd.Flags().Changed(flagKeyRef) {
 			s.KeyRef = editKeyRef
 			s.Key = ""
 		}
@@ -119,7 +119,7 @@ var editCmd = &cobra.Command{
 			s.KeyRef = ""
 		}
 
-		if s.Password != "" && (cmd.Flags().Changed("key") || cmd.Flags().Changed("key-ref")) && !cmd.Flags().Changed("password") && !clearPassword {
+		if s.Password != "" && (cmd.Flags().Changed("key") || cmd.Flags().Changed(flagKeyRef)) && !cmd.Flags().Changed("password") && !clearPassword {
 			fmt.Println("Warning: server has a stored password; key will be ignored unless password is cleared.")
 		}
 
@@ -149,7 +149,7 @@ func init() {
 	editCmd.Flags().StringVar(&editUser, "user", "", "SSH user")
 	editCmd.Flags().IntVar(&editPort, "port", 0, "SSH port")
 	editCmd.Flags().StringVar(&editKey, "key", "", "SSH key")
-	editCmd.Flags().StringVar(&editKeyRef, "key-ref", "", "Reference to encrypted key stored in repo")
+	editCmd.Flags().StringVar(&editKeyRef, flagKeyRef, "", "Reference to encrypted key stored in repo")
 	editCmd.Flags().StringVar(&editPassword, "password", "", "SSH password")
 	editCmd.Flags().BoolVar(&clearPassword, "clear-password", false, "Clear stored password")
 	editCmd.Flags().BoolVar(&clearKeyRef, "clear-key-ref", false, "Clear stored key reference")

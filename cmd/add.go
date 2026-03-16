@@ -114,7 +114,7 @@ func init() {
 	addCmd.Flags().StringVar(&sshUser, "user", "root", "SSH user")
 	addCmd.Flags().IntVar(&port, "port", 22, "SSH port")
 	addCmd.Flags().StringVar(&key, "key", "~/.ssh/id_rsa", "SSH key")
-	addCmd.Flags().StringVar(&keyRef, "key-ref", "", "Reference to encrypted key stored in repo")
+	addCmd.Flags().StringVar(&keyRef, flagKeyRef, "", "Reference to encrypted key stored in repo")
 	addCmd.Flags().StringVar(&password, "password", "", "SSH password")
 
 	addCmd.MarkFlagRequired("host")
