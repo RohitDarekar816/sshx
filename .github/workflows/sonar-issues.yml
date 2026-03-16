@@ -4,6 +4,10 @@ on:
   workflow_dispatch:
   schedule:
     - cron: "0 * * * *"
+  push:
+    branches:
+      - develop
+      - master
 
 jobs:
   sync-sonar-issues:
@@ -22,5 +26,5 @@ jobs:
       - name: Run Sync Script
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-          GITHUB_TOKEN: ${{ secrets.GIT_ACCESS_TOKEN }}
+          GIT_ACCESS_TOKEN: ${{ secrets.GIT_ACCESS_TOKEN }}
         run: python sonar_to_github.py
