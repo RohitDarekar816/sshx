@@ -27,4 +27,5 @@ jobs:
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           GIT_ACCESS_TOKEN: ${{ secrets.GIT_ACCESS_TOKEN }}
+          GIT_REPO: ${{ github.repository }}
         run: python sonar_to_github.py

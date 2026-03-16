@@ -8,7 +8,7 @@ import requests
 
 SONAR_TOKEN = os.getenv("SONAR_TOKEN")
 GITHUB_TOKEN = os.getenv("GIT_ACCESS_TOKEN")
-REPO = "owner/repo"
+REPO = os.getenv("GIT_REPO", "owner/repo")
 
 SONAR_URL = "https://sonarcloud.io/api/issues/search"
 COMPONENT_KEY = "RohitDarekar816_sshx"
