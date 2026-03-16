@@ -1,3 +1,11 @@
 sshx
 dist/
 bin/
+.venv/
+__pycache__/
+*.pyc
+.env
+*.log
+*.out
+*.test
+.DS_Store
