@@ -1,0 +1,30 @@
+name: Sonar Issues Sync
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 * * * *"
+  push:
+    branches:
+      - develop
+
+jobs:
+  sync-sonar-issues:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Install Python
+        uses: actions/setup-python@v4
+
+      - name: Install dependencies
+        run: pip install requests
+
+      - name: Run Sync Script
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          GIT_ACCESS_TOKEN: ${{ secrets.GIT_ACCESS_TOKEN }}
+          GIT_REPO: ${{ github.repository }}
+        run: python sonar_to_github.py

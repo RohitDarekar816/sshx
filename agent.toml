@@ -1,0 +1,8 @@
+# Version of the agent configuration standard
+version = "1.0"
+
+model = "claude-sonnet-4-5"
+
+imports = [
+    "agents/code-review/agent.toml"
+]
