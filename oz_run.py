@@ -77,7 +77,7 @@ def build_issue_prompt(repo: str, issue: dict) -> str:
         "Requirements:\n"
         "- Implement a correct fix in the codebase.\n"
         "- Add or update tests as needed.\n"
-        "- Open a PR with a clear summary and reference the issue number.\n"
+        "- Open a PR targeting the develop branch (not master), with a clear summary and reference the issue number.\n"
     )
 
 
