@@ -2,10 +2,12 @@ package server
 
 import "testing"
 
+const testHost = "1.2.3.4"
+
 func TestValidateAndRepairDefaults(t *testing.T) {
 	input := Server{
 		Name: "prod",
-		Host: "1.2.3.4",
+		Host: testHost,
 	}
 
 	out, err := ValidateAndRepair(input)
@@ -29,7 +31,7 @@ func TestValidateAndRepairDefaults(t *testing.T) {
 func TestValidateAndRepairInvalidPort(t *testing.T) {
 	input := Server{
 		Name: "prod",
-		Host: "1.2.3.4",
+		Host: testHost,
 		Port: 70000,
 	}
 
@@ -42,7 +44,7 @@ func TestValidateAndRepairInvalidPort(t *testing.T) {
 func TestValidateAndRepairAuthPrecedence(t *testing.T) {
 	input := Server{
 		Name:     "prod",
-		Host:     "1.2.3.4",
+		Host:     testHost,
 		User:     "ubuntu",
 		Port:     22,
 		Key:      "~/.ssh/id_rsa",
