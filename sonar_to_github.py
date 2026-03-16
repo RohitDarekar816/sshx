@@ -287,6 +287,7 @@ def main() -> None:
             issue_type = str(issue.get("type", "CODE_SMELL"))
             project_key = str(issue.get("project", COMPONENT_KEY))
             fingerprint = issue_fingerprint(component, line, rule_key, message)
+            file_path = normalize_component(component)
 
             if not sonar_issue_key:
                 logging.warning("Skipping issue without key: %s", message)
@@ -306,8 +307,6 @@ def main() -> None:
 
             label = issue_label(severity)
             labels = [label, "sonarqube"] if label != "sonarqube" else ["sonarqube"]
-
-            file_path = normalize_component(component)
 
             rule_name = ""
             rule_desc = ""
