@@ -1,21 +1,12 @@
 name: Sonar Issues Sync
 
 on:
-  workflow_dispatch:
   schedule:
-    - cron: "0 * * * *"
-  push:
-    branches:
-      - develop
-  pull_request:
-    branches:
-      - develop
-    types:
-      - closed
+    - cron: "0 0 * * *"
 
 jobs:
   sync-sonar-issues:
-    if: ${{ github.event_name != 'pull_request' || github.event.pull_request.merged == true }}
+    if: ${{ github.ref == 'refs/heads/develop' }}
     runs-on: ubuntu-latest
 
     steps:
