@@ -3,6 +3,7 @@ import sys
 import logging
 import re
 import hashlib
+import json
 from typing import Dict, Iterable, List, Optional, Set, Tuple
 
 import requests
@@ -13,6 +14,7 @@ REPO = os.getenv("GIT_REPO", "owner/repo")
 
 SONAR_URL = "https://sonarcloud.io/api/issues/search"
 COMPONENT_KEY = "RohitDarekar816_sshx"
+SONAR_ORG = os.getenv("SONAR_ORG")
 
 
 def require_env(name: str) -> str:
@@ -58,12 +60,18 @@ def sonar_rule_details(
     session: requests.Session,
     rule_key: str,
     cache: Dict[str, Dict[str, object]],
+    organization: Optional[str],
 ) -> Dict[str, object]:
     if rule_key in cache:
         return cache[rule_key]
+    if not organization:
+        logging.warning("Skipping rule fetch for %s because SONAR_ORG is not set.", rule_key)
+        cache[rule_key] = {}
+        return cache[rule_key]
+    params = {"key": rule_key, "organization": organization}
     resp = session.get(
         "https://sonarcloud.io/api/rules/show",
-        params={"key": rule_key},
+        params=params,
         timeout=20,
     )
     if not resp.ok:
@@ -177,67 +185,84 @@ def ensure_labels(session: requests.Session, repo: str, labels: List[str]) -> No
             )
 
 
-def search_issues(session: requests.Session, query: str) -> bool:
-    resp = session.get(
-        "https://api.github.com/search/issues",
-        params={"q": query, "per_page": 1},
-        timeout=20,
-    )
-    if not resp.ok:
-        raise RuntimeError(
-            f"GitHub search failed: {resp.status_code} {resp.text[:200]}"
-        )
-    data = resp.json()
-    return bool(data.get("total_count", 0))
-
-
-def sanitize_query_term(value: str, max_len: int = 80) -> str:
-    value = value.replace('"', " ").strip()
-    if len(value) > max_len:
-        value = value[:max_len].rstrip()
-    return value
-
-
 def issue_fingerprint(component: str, line: Optional[object], rule_key: str, message: str) -> str:
     raw = f"{component}|{line}|{rule_key}|{message}"
     return hashlib.sha256(raw.encode("utf-8")).hexdigest()[:16]
 
 
-def github_issue_exists(
+def load_existing_issue_markers(
     session: requests.Session,
     repo: str,
-    sonar_issue_key: str,
-    fingerprint: str,
-    file_path: str,
-    line_display: object,
-    message: str,
-) -> bool:
-    if sonar_issue_key:
-        query = f'repo:{repo} type:issue in:body "{sonar_issue_key}"'
-        if search_issues(session, query):
-            return True
+) -> Tuple[Set[str], Set[str]]:
+    sonar_keys: Set[str] = set()
+    fingerprints: Set[str] = set()
 
-    query = f'repo:{repo} type:issue in:body "Sonar Fingerprint: {fingerprint}"'
-    if search_issues(session, query):
-        return True
+    cache_dir = os.getenv("XDG_CACHE_HOME", "/tmp")
+    cache_path = os.path.join(cache_dir, "sonar_to_github_issues_cache.json")
+    cache_etag: Optional[str] = None
+    cache_data: Optional[dict] = None
 
-    msg = sanitize_query_term(message)
-    file_term = sanitize_query_term(file_path)
-    line_term = sanitize_query_term(str(line_display))
-    if msg and file_term and line_term:
-        query = (
-            f'repo:{repo} type:issue in:body "File: {file_term}" '
-            f'"Line: {line_term}" "{msg}"'
+    try:
+        with open(cache_path, "r", encoding="utf-8") as handle:
+            cache_data = json.load(handle)
+            cache_etag = cache_data.get("etag")
+    except FileNotFoundError:
+        cache_data = None
+    except (json.JSONDecodeError, OSError):
+        cache_data = None
+
+    page = 1
+    used_cache = False
+    while True:
+        headers = {}
+        if page == 1 and cache_etag:
+            headers["If-None-Match"] = cache_etag
+        resp = session.get(
+            f"https://api.github.com/repos/{repo}/issues",
+            params={"state": "all", "per_page": 100, "page": page},
+            headers=headers,
+            timeout=20,
         )
-        if search_issues(session, query):
-            return True
+        if resp.status_code == 304 and page == 1 and cache_data:
+            cached_keys = cache_data.get("sonar_keys", [])
+            cached_fps = cache_data.get("fingerprints", [])
+            if isinstance(cached_keys, list):
+                sonar_keys.update(k for k in cached_keys if isinstance(k, str))
+            if isinstance(cached_fps, list):
+                fingerprints.update(k for k in cached_fps if isinstance(k, str))
+            used_cache = True
+            break
+        if not resp.ok:
+            raise RuntimeError(
+                f"GitHub issues list failed: {resp.status_code} {resp.text[:200]}"
+            )
+        issues = resp.json()
+        if not issues:
+            break
+        for issue in issues:
+            body = str(issue.get("body", "") or "")
+            match_key = re.search(r"Sonar Issue Key:\s*([A-Za-z0-9:_-]+)", body)
+            if match_key:
+                sonar_keys.add(match_key.group(1))
+            match_fp = re.search(r"Sonar Fingerprint:\s*([0-9a-f]{16})", body)
+            if match_fp:
+                fingerprints.add(match_fp.group(1))
+        page += 1
 
-    if msg:
-        query = f'repo:{repo} type:issue in:title "{msg}"'
-        if search_issues(session, query):
-            return True
+    if not used_cache and cache_path:
+        new_cache = {
+            "etag": resp.headers.get("ETag") if "resp" in locals() else None,
+            "sonar_keys": sorted(sonar_keys),
+            "fingerprints": sorted(fingerprints),
+        }
+        try:
+            os.makedirs(os.path.dirname(cache_path), exist_ok=True)
+            with open(cache_path, "w", encoding="utf-8") as handle:
+                json.dump(new_cache, handle)
+        except OSError:
+            pass
 
-    return False
+    return sonar_keys, fingerprints
 
 
 def create_github_issue(
@@ -271,6 +296,8 @@ def main() -> None:
     labels_to_ensure = {"sonarqube", "critical", "high", "medium", "low", "info"}
     ensure_labels(session, REPO, sorted(labels_to_ensure))
 
+    sonar_keys, fingerprints = load_existing_issue_markers(session, REPO)
+
     sonar_session = requests.Session()
     sonar_session.auth = (sonar_token, "")
     rule_cache: Dict[str, Dict[str, object]] = {}
@@ -293,15 +320,7 @@ def main() -> None:
                 logging.warning("Skipping issue without key: %s", message)
                 continue
 
-            if github_issue_exists(
-                session,
-                REPO,
-                sonar_issue_key,
-                fingerprint,
-                file_path,
-                line_display,
-                message,
-            ):
+            if sonar_issue_key in sonar_keys or fingerprint in fingerprints:
                 logging.info("Skipping existing issue: %s", sonar_issue_key)
                 continue
 
@@ -313,7 +332,7 @@ def main() -> None:
             rule_why = ""
             rule_fix = ""
             if rule_key:
-                rule = sonar_rule_details(sonar_session, rule_key, rule_cache)
+                rule = sonar_rule_details(sonar_session, rule_key, rule_cache, SONAR_ORG)
                 rule_name = str(rule.get("name", "")).strip()
                 rule_desc = str(rule.get("mdDesc") or rule.get("htmlDesc") or "").strip()
                 rule_desc = strip_html(rule_desc)

@@ -25,12 +25,22 @@ jobs:
       - name: Install Python
         uses: actions/setup-python@v4
 
+      - name: Cache Sonar Issue Markers
+        uses: actions/cache@v3
+        with:
+          path: /tmp/sonar_to_github_issues_cache.json
+          key: sonar-issues-cache-${{ github.repository }}-${{ github.ref_name }}
+          restore-keys: |
+            sonar-issues-cache-${{ github.repository }}-
+            sonar-issues-cache-
+
       - name: Install dependencies
         run: pip install requests
 
       - name: Run Sync Script
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_ORG: ${{ secrets.SONAR_ORG }}
           GIT_ACCESS_TOKEN: ${{ secrets.GIT_ACCESS_TOKEN }}
           GIT_REPO: ${{ github.repository }}
         run: python sonar_to_github.py
