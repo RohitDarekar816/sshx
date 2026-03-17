@@ -34,4 +34,4 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
-          codex --dangerously-bypass-approvals-and-sandbox "${{ steps.build_prompt.outputs.prompt }}"
+          script -q -e -c "codex --dangerously-bypass-approvals-and-sandbox \"${{ steps.build_prompt.outputs.prompt }}\""
