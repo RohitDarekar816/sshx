@@ -16,7 +16,7 @@ type UsersFile struct {
 	Users []interface{} `json:"users"`
 }
 
-func CloneOrInitRepo(repoURL string, repoDir string) error {
+func CloneOrInitRepo(repoURL, repoDir string) error {
 
 	// try cloning
 	_, err := gogit.PlainClone(repoDir, false, &gogit.CloneOptions{
