@@ -11,7 +11,7 @@ import (
 )
 
 // CloneRepo clones the git repository if it does not already exist
-func CloneRepo(repoURL string, path string) error {
+func CloneRepo(repoURL, path string) error {
 
 	// Check if repo already exists
 	if _, err := os.Stat(path); err == nil {
@@ -36,7 +36,7 @@ func CloneRepo(repoURL string, path string) error {
 }
 
 // CommitAndPush stages all changes, commits them, and pushes to remote
-func CommitAndPush(repoPath string, message string) error {
+func CommitAndPush(repoPath, message string) error {
 
 	repo, err := git.PlainOpen(repoPath)
 	if err != nil {

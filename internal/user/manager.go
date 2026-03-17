@@ -44,7 +44,7 @@ func UserExists(users *UsersFile, email string) bool {
 	return false
 }
 
-func AddUser(users *UsersFile, username string, email string) {
+func AddUser(users *UsersFile, username, email string) {
 
 	users.Users = append(users.Users, User{
 		Username: username,

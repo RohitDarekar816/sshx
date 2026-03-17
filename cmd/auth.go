@@ -120,7 +120,7 @@ func init() {
 	rootCmd.AddCommand(authCmd)
 }
 
-func setupTOTP(repoDir string, email string, reader *bufio.Reader) error {
+func setupTOTP(repoDir, email string, reader *bufio.Reader) error {
 
 	secret, err := totp.GenerateSecret()
 	if err != nil {

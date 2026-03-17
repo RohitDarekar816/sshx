@@ -9,7 +9,7 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-func LoadServer(repoDir string, name string) (*Server, error) {
+func LoadServer(repoDir, name string) (*Server, error) {
 
 	serverDir := filepath.Join(repoDir, "servers")
 	candidates := []string{
@@ -89,7 +89,7 @@ func LoadServers(repoDir string) ([]Server, error) {
 	return servers, nil
 }
 
-func RemoveServer(repoDir string, name string) error {
+func RemoveServer(repoDir, name string) error {
 
 	serverDir := filepath.Join(repoDir, "servers")
 	candidates := []string{
