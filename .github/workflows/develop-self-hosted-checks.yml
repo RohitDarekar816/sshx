@@ -1,4 +1,4 @@
-name: Develop Branch Self-Hosted Checks
+name: Develop Branch Codex Issue Fix
 
 on:
   push:
@@ -6,12 +6,32 @@ on:
       - develop
 
 jobs:
-  basic-info:
+  codex-issue-fix:
     runs-on: [self-hosted]
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: read
     steps:
-      - name: List files
-        run: ls
-      - name: Print working directory
-        run: pwd
-      - name: Show user
-        run: whoami
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Build prompt from oldest issue
+        id: build_prompt
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          PROMPT="$(python3 scripts/build_issue_prompt.py --repo "${GITHUB_REPOSITORY}" --issue-pick oldest --state open)"
+          {
+            echo 'prompt<<EOF'
+            echo "$PROMPT"
+            echo EOF
+          } >> "$GITHUB_OUTPUT"
+      - name: Run Codex
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          codex --dangerously-bypass-approvals-and-sandbox "${{ steps.build_prompt.outputs.prompt }}"
