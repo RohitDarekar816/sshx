@@ -25,9 +25,18 @@ func Connect(s *server.Server, passphrase string) {
 		sshArgs = append(sshArgs, "-p", fmt.Sprintf("%d", s.Port))
 	}
 
+	if s.Password != "" {
+		sshArgs = append(sshArgs,
+			"-o", "PreferredAuthentications=password,keyboard-interactive",
+			"-o", "PubkeyAuthentication=no",
+			"-o", "PasswordAuthentication=yes",
+		)
+	}
+
 	sshArgs = append(sshArgs, target)
 
 	var cmd *exec.Cmd
+	usedSshpass := false
 
 	if s.Password != "" {
 		if passphrase == "" {
@@ -43,9 +52,15 @@ func Connect(s *server.Server, passphrase string) {
 			return
 		}
 
-		sshpassArgs := []string{"-p", plainPassword, "ssh"}
-		sshpassArgs = append(sshpassArgs, sshArgs...)
-		cmd = exec.Command("sshpass", sshpassArgs...)
+		if _, err := exec.LookPath("sshpass"); err == nil {
+			sshpassArgs := []string{"-p", plainPassword, "ssh"}
+			sshpassArgs = append(sshpassArgs, sshArgs...)
+			cmd = exec.Command("sshpass", sshpassArgs...)
+			usedSshpass = true
+		} else {
+			fmt.Println("sshpass not found. Falling back to interactive SSH password prompt.")
+			cmd = exec.Command("ssh", sshArgs...)
+		}
 	} else {
 		cmd = exec.Command("ssh", sshArgs...)
 	}
@@ -56,8 +71,9 @@ func Connect(s *server.Server, passphrase string) {
 
 	err := cmd.Run()
 	if err != nil {
-		if s.Password != "" {
-			fmt.Println("Connection failed. Make sure 'sshpass' is installed: sudo apt install sshpass")
+		if usedSshpass {
+			fmt.Println("Connection failed:", err)
+			fmt.Println("sshpass was detected and used. Verify the password, server auth settings, and SSH reachability.")
 		} else {
 			fmt.Println("Connection failed:", err)
 		}
