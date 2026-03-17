@@ -15,18 +15,18 @@ type SecretFile struct {
 	Data    string `yaml:"data"`
 }
 
-func SecretPath(repoDir string, email string) string {
+func SecretPath(repoDir, email string) string {
 
 	dir := filepath.Join(repoDir, "totp")
 	return filepath.Join(dir, sanitize(email)+".yaml")
 }
 
-func HasSecret(repoDir string, email string) bool {
+func HasSecret(repoDir, email string) bool {
 	_, err := os.Stat(SecretPath(repoDir, email))
 	return err == nil
 }
 
-func SaveEncryptedSecret(repoDir string, email string, encrypted string) error {
+func SaveEncryptedSecret(repoDir, email, encrypted string) error {
 
 	dir := filepath.Join(repoDir, "totp")
 	if err := os.MkdirAll(dir, 0755); err != nil {
@@ -46,7 +46,7 @@ func SaveEncryptedSecret(repoDir string, email string, encrypted string) error {
 	return os.WriteFile(SecretPath(repoDir, email), data, 0644)
 }
 
-func LoadEncryptedSecret(repoDir string, email string) (string, error) {
+func LoadEncryptedSecret(repoDir, email string) (string, error) {
 
 	path := SecretPath(repoDir, email)
 	data, err := os.ReadFile(path)
