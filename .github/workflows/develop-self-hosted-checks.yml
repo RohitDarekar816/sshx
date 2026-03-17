@@ -29,9 +29,9 @@ jobs:
             echo "$PROMPT"
             echo EOF
           } >> "$GITHUB_OUTPUT"
-      - name: Run Codex
+      - name: Run OpenCode
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
-          script -q -e -c "codex --dangerously-bypass-approvals-and-sandbox \"${{ steps.build_prompt.outputs.prompt }}\""
+          opencode run "${{ steps.build_prompt.outputs.prompt }}"
