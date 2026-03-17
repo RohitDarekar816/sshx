@@ -1,0 +1,17 @@
+name: Develop Branch Self-Hosted Checks
+
+on:
+  push:
+    branches:
+      - develop
+
+jobs:
+  basic-info:
+    runs-on: [self-hosted]
+    steps:
+      - name: List files
+        run: ls
+      - name: Print working directory
+        run: pwd
+      - name: Show user
+        run: whoami
