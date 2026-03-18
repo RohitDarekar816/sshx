@@ -17,11 +17,11 @@ type KeyFile struct {
 	Data    string `yaml:"data"`
 }
 
-func KeyPath(repoDir, name string) string {
+func KeyPath(repoDir string, name string) string {
 	return filepath.Join(repoDir, "keys", name+".yaml")
 }
 
-func EncryptKeyFile(repoDir, name string, filePath, passphrase string) error {
+func EncryptKeyFile(repoDir string, name string, filePath string, passphrase string) error {
 
 	raw, err := os.ReadFile(filePath)
 	if err != nil {
@@ -36,7 +36,7 @@ func EncryptKeyFile(repoDir, name string, filePath, passphrase string) error {
 	return SaveEncryptedKey(repoDir, name, encrypted)
 }
 
-func SaveEncryptedKey(repoDir, name, encrypted string) error {
+func SaveEncryptedKey(repoDir string, name string, encrypted string) error {
 
 	dir := filepath.Join(repoDir, "keys")
 	if err := os.MkdirAll(dir, 0755); err != nil {
@@ -56,7 +56,7 @@ func SaveEncryptedKey(repoDir, name, encrypted string) error {
 	return os.WriteFile(KeyPath(repoDir, name), data, 0644)
 }
 
-func LoadEncryptedKey(repoDir, name string) (string, error) {
+func LoadEncryptedKey(repoDir string, name string) (string, error) {
 
 	data, err := os.ReadFile(KeyPath(repoDir, name))
 	if err != nil {
@@ -75,7 +75,7 @@ func LoadEncryptedKey(repoDir, name string) (string, error) {
 	return f.Data, nil
 }
 
-func DecryptKey(repoDir, name, passphrase string) ([]byte, error) {
+func DecryptKey(repoDir string, name string, passphrase string) ([]byte, error) {
 
 	encrypted, err := LoadEncryptedKey(repoDir, name)
 	if err != nil {
@@ -118,7 +118,7 @@ func ListKeys(repoDir string) ([]string, error) {
 	return names, nil
 }
 
-func RemoveKey(repoDir, name string) error {
+func RemoveKey(repoDir string, name string) error {
 	return os.Remove(KeyPath(repoDir, name))
 }
 
