@@ -35,4 +35,4 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
-          opencode run "${{ steps.build_prompt.outputs.prompt }}"
+          opencode run --model opencode/big-pickle "${{ steps.build_prompt.outputs.prompt }}"
