@@ -15,6 +15,8 @@ type SecretFile struct {
 	Data    string `yaml:"data"`
 }
 
+// SecretPath returns the path to the TOTP secret file for the given repository directory and email.
+// Issue #10: SonarQube - Group together these consecutive parameters of the same type.
 func SecretPath(repoDir, email string) string {
 
 	dir := filepath.Join(repoDir, "totp")
