@@ -21,7 +21,7 @@ func KeyPath(repoDir, name string) string {
 	return filepath.Join(repoDir, "keys", name+".yaml")
 }
 
-func EncryptKeyFile(repoDir, name, filePath, passphrase string) error {
+func EncryptKeyFile(repoDir, name string, filePath, passphrase string) error {
 
 	raw, err := os.ReadFile(filePath)
 	if err != nil {
