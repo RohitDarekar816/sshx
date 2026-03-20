@@ -100,7 +100,7 @@ var authCmd = &cobra.Command{
 			return
 		}
 
-		if !totp.HasSecret(totp.Config{RepoDir: repoDir, Email: email}) {
+		if !totp.HasSecret(repoDir, email) {
 			if err := setupTOTP(repoDir, email, reader); err != nil {
 				fmt.Println("TOTP setup failed:", err)
 				return
@@ -161,5 +161,5 @@ func setupTOTP(repoDir, email string, reader *bufio.Reader) error {
 		return err
 	}
 
-	return totp.SaveEncryptedSecret(totp.Config{RepoDir: repoDir, Email: email}, encrypted)
+	return totp.SaveEncryptedSecret(repoDir, email, encrypted)
 }

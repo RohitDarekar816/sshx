@@ -34,7 +34,7 @@ func requireMFA(repoDir string) (string, error) {
 		_ = config.SaveConfig(cfg)
 	}
 
-	if !totp.HasSecret(totp.Config{RepoDir: repoDir, Email: email}) {
+	if !totp.HasSecret(repoDir, email) {
 		return "", errors.New("TOTP not set up. Run `sshx auth` first")
 	}
 
@@ -45,7 +45,7 @@ func requireMFA(repoDir string) (string, error) {
 		return "", errors.New("passphrase cannot be empty")
 	}
 
-	encrypted, err := totp.LoadEncryptedSecret(totp.Config{RepoDir: repoDir, Email: email})
+	encrypted, err := totp.LoadEncryptedSecret(repoDir, email)
 	if err != nil {
 		return "", err
 	}
