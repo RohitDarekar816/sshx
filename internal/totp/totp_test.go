@@ -19,3 +19,15 @@ func TestOTPAuthURL(t *testing.T) {
 		t.Fatalf("expected non-empty otpauth url")
 	}
 }
+
+func TestSecretPath(t *testing.T) {
+	cfg := Config{
+		RepoDir: "/home/user/project",
+		Email:   "user@example.com",
+	}
+	path := SecretPath(cfg)
+	expected := "/home/user/project/totp/user_example_com.yaml"
+	if path != expected {
+		t.Fatalf("expected %s, got %s", expected, path)
+	}
+}
