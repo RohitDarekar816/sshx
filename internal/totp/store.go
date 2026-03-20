@@ -15,22 +15,23 @@ type SecretFile struct {
 	Data    string `yaml:"data"`
 }
 
-// SecretPath returns the path to the TOTP secret file for the given repository directory and email.
-// Issue #10: SonarQube - Group together these consecutive parameters of the same type.
-func SecretPath(repoDir, email string) string {
-
-	dir := filepath.Join(repoDir, "totp")
-	return filepath.Join(dir, sanitize(email)+".yaml")
+type Config struct {
+	RepoDir string
+	Email   string
 }
 
-func HasSecret(repoDir, email string) bool {
-	_, err := os.Stat(SecretPath(repoDir, email))
+func SecretPath(cfg Config) string {
+	dir := filepath.Join(cfg.RepoDir, "totp")
+	return filepath.Join(dir, sanitize(cfg.Email)+".yaml")
+}
+
+func HasSecret(cfg Config) bool {
+	_, err := os.Stat(SecretPath(cfg))
 	return err == nil
 }
 
-func SaveEncryptedSecret(repoDir, email, encrypted string) error {
-
-	dir := filepath.Join(repoDir, "totp")
+func SaveEncryptedSecret(cfg Config, encrypted string) error {
+	dir := filepath.Join(cfg.RepoDir, "totp")
 	if err := os.MkdirAll(dir, 0755); err != nil {
 		return err
 	}
@@ -45,12 +46,11 @@ func SaveEncryptedSecret(repoDir, email, encrypted string) error {
 		return err
 	}
 
-	return os.WriteFile(SecretPath(repoDir, email), data, 0644)
+	return os.WriteFile(SecretPath(cfg), data, 0644)
 }
 
-func LoadEncryptedSecret(repoDir, email string) (string, error) {
-
-	path := SecretPath(repoDir, email)
+func LoadEncryptedSecret(cfg Config) (string, error) {
+	path := SecretPath(cfg)
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return "", err
