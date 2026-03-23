@@ -118,7 +118,7 @@ func ListKeys(repoDir string) ([]string, error) {
 	return names, nil
 }
 
-func RemoveKey(repoDir string, name string) error {
+func RemoveKey(repoDir, name string) error {
 	return os.Remove(KeyPath(repoDir, name))
 }
 
