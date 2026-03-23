@@ -15,23 +15,20 @@ type SecretFile struct {
 	Data    string `yaml:"data"`
 }
 
-type Config struct {
-	RepoDir string
-	Email   string
+func SecretPath(repoDir, email string) string {
+
+	dir := filepath.Join(repoDir, "totp")
+	return filepath.Join(dir, sanitize(email)+".yaml")
 }
 
-func SecretPath(cfg Config) string {
-	dir := filepath.Join(cfg.RepoDir, "totp")
-	return filepath.Join(dir, sanitize(cfg.Email)+".yaml")
-}
-
-func HasSecret(cfg Config) bool {
-	_, err := os.Stat(SecretPath(cfg))
+func HasSecret(repoDir, email string) bool {
+	_, err := os.Stat(SecretPath(repoDir, email))
 	return err == nil
 }
 
-func SaveEncryptedSecret(cfg Config, encrypted string) error {
-	dir := filepath.Join(cfg.RepoDir, "totp")
+func SaveEncryptedSecret(repoDir, email, encrypted string) error {
+
+	dir := filepath.Join(repoDir, "totp")
 	if err := os.MkdirAll(dir, 0755); err != nil {
 		return err
 	}
@@ -46,11 +43,12 @@ func SaveEncryptedSecret(cfg Config, encrypted string) error {
 		return err
 	}
 
-	return os.WriteFile(SecretPath(cfg), data, 0644)
+	return os.WriteFile(SecretPath(repoDir, email), data, 0644)
 }
 
-func LoadEncryptedSecret(cfg Config) (string, error) {
-	path := SecretPath(cfg)
+func LoadEncryptedSecret(repoDir, email string) (string, error) {
+
+	path := SecretPath(repoDir, email)
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return "", err

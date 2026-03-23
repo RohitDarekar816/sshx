@@ -4,8 +4,9 @@ bin/
 .venv/
 __pycache__/
 *.pyc
-.env
 *.log
 *.out
 *.test
 .DS_Store
+config.bat
+node_modules

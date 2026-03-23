@@ -21,11 +21,7 @@ func TestOTPAuthURL(t *testing.T) {
 }
 
 func TestSecretPath(t *testing.T) {
-	cfg := Config{
-		RepoDir: "/home/user/project",
-		Email:   "user@example.com",
-	}
-	path := SecretPath(cfg)
+	path := SecretPath("/home/user/project", "user@example.com")
 	expected := "/home/user/project/totp/user_example_com.yaml"
 	if path != expected {
 		t.Fatalf("expected %s, got %s", expected, path)
