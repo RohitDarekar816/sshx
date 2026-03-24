@@ -28,7 +28,7 @@ func GenerateSecret() (string, error) {
 	return enc.EncodeToString(secret), nil
 }
 
-func OTPAuthURL(issuer string, account string, secret string) string {
+func OTPAuthURL(issuer, account, secret string) string {
 
 	label := fmt.Sprintf("%s:%s", issuer, account)
 
