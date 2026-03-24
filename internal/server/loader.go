@@ -33,7 +33,6 @@ func LoadServer(repoDir, name string) (*Server, error) {
 }
 
 func LoadServers(repoDir string) ([]Server, error) {
-
 	serverDir := filepath.Join(repoDir, "servers")
 
 	entries, err := os.ReadDir(serverDir)
@@ -51,42 +50,64 @@ func LoadServers(repoDir string) ([]Server, error) {
 		}
 
 		ext := filepath.Ext(entry.Name())
-		if ext != ".json" && ext != ".yaml" && ext != ".yml" {
+		if !isValidServerFile(ext) {
 			continue
 		}
 
-		fullPath := filepath.Join(serverDir, entry.Name())
-		s, err := loadServerFile(fullPath)
+		server, err := loadAndValidateServer(serverDir, entry.Name(), ext)
 		if err != nil {
 			continue
 		}
 
-		repaired, _ := ValidateAndRepair(*s)
-		s = repaired
-
-		if _, ok := byName[s.Name]; !ok {
-			order = append(order, s.Name)
+		if _, ok := byName[server.Name]; !ok {
+			order = append(order, server.Name)
 		}
 
-		// Prefer YAML over JSON when duplicates exist.
-		if existingExt, ok := sourceExt[s.Name]; ok {
-			if (existingExt == ".yaml" || existingExt == ".yml") && ext == ".json" {
-				continue
-			}
+		if shouldSkipForDuplicate(server.Name, ext, sourceExt) {
+			continue
 		}
 
-		byName[s.Name] = *s
-		sourceExt[s.Name] = ext
+		byName[server.Name] = *server
+		sourceExt[server.Name] = ext
 	}
 
+	return buildServerList(byName, order), nil
+}
+
+func isValidServerFile(ext string) bool {
+	return ext == ".json" || ext == ".yaml" || ext == ".yml"
+}
+
+func loadAndValidateServer(serverDir, filename, ext string) (*Server, error) {
+	fullPath := filepath.Join(serverDir, filename)
+	s, err := loadServerFile(fullPath)
+	if err != nil {
+		return nil, err
+	}
+
+	repaired, _ := ValidateAndRepair(*s)
+	return repaired, nil
+}
+
+func shouldSkipForDuplicate(name, ext string, sourceExt map[string]string) bool {
+	existingExt, ok := sourceExt[name]
+	if !ok {
+		return false
+	}
+
+	isYamlExisting := existingExt == ".yaml" || existingExt == ".yml"
+	isJsonNew := ext == ".json"
+	return isYamlExisting && isJsonNew
+}
+
+func buildServerList(byName map[string]Server, order []string) []Server {
 	servers := make([]Server, 0, len(byName))
 	for _, name := range order {
 		if s, ok := byName[name]; ok {
 			servers = append(servers, s)
 		}
 	}
-
-	return servers, nil
+	return servers
 }
 
 func RemoveServer(repoDir, name string) error {
