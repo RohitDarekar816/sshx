@@ -9,7 +9,7 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-func LoadServer(repoDir, name string) (*Server, error) {
+func LoadServer(repoDir string, name string) (*Server, error) {
 
 	serverDir := filepath.Join(repoDir, "servers")
 	candidates := []string{
