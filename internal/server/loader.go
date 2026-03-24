@@ -45,17 +45,8 @@ func LoadServers(repoDir string) ([]Server, error) {
 	order := []string{}
 
 	for _, entry := range entries {
-		if entry.IsDir() {
-			continue
-		}
-
-		ext := filepath.Ext(entry.Name())
-		if !isValidServerFile(ext) {
-			continue
-		}
-
-		server, err := loadAndValidateServer(serverDir, entry.Name(), ext)
-		if err != nil {
+		server, ext := processEntry(serverDir, entry, byName, sourceExt)
+		if server == nil {
 			continue
 		}
 
@@ -63,15 +54,33 @@ func LoadServers(repoDir string) ([]Server, error) {
 			order = append(order, server.Name)
 		}
 
-		if shouldSkipForDuplicate(server.Name, ext, sourceExt) {
-			continue
-		}
-
 		byName[server.Name] = *server
 		sourceExt[server.Name] = ext
 	}
 
 	return buildServerList(byName, order), nil
+}
+
+func processEntry(serverDir string, entry os.DirEntry, byName map[string]Server, sourceExt map[string]string) (*Server, string) {
+	if entry.IsDir() {
+		return nil, ""
+	}
+
+	ext := filepath.Ext(entry.Name())
+	if !isValidServerFile(ext) {
+		return nil, ""
+	}
+
+	server, err := loadAndValidateServer(serverDir, entry.Name(), ext)
+	if err != nil {
+		return nil, ""
+	}
+
+	if shouldSkipForDuplicate(server.Name, ext, sourceExt) {
+		return nil, ""
+	}
+
+	return server, ext
 }
 
 func isValidServerFile(ext string) bool {
