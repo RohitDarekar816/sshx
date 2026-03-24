@@ -89,7 +89,7 @@ func LoadServers(repoDir string) ([]Server, error) {
 	return servers, nil
 }
 
-func RemoveServer(repoDir, name string) error {
+func RemoveServer(repoDir string, name string) error {
 
 	serverDir := filepath.Join(repoDir, "servers")
 	candidates := []string{
