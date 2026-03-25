@@ -15,7 +15,7 @@ import (
 const (
 	saltSize    = 16
 	keySize     = 32 // AES-256
-	scryptN     = 1 << 17 // CPU/memory cost (131072)
+	scryptN     = 1 << 20 // CPU/memory cost (1048576) - OWASP recommended minimum
 	scryptR     = 8       // Block size
 	scryptP     = 1       // Parallelization
 )
