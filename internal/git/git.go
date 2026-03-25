@@ -11,7 +11,7 @@ import (
 )
 
 // CloneRepo clones the git repository if it does not already exist
-func CloneRepo(repoURL string, path string) error {
+func CloneRepo(repoURL, path string) error {
 
 	// Check if repo already exists
 	if _, err := os.Stat(path); err == nil {
