@@ -19,7 +19,7 @@ const (
 
 // Encrypt encrypts plaintext using AES-256-GCM with a key derived from passphrase via scrypt.
 // Returns a base64-encoded string containing: salt + nonce + ciphertext.
-func Encrypt(plaintext, passphrase string) (string, error) {
+func Encrypt(plaintext string, passphrase string) (string, error) {
 
 	salt := make([]byte, saltSize)
 	if _, err := io.ReadFull(rand.Reader, salt); err != nil {
@@ -58,7 +58,7 @@ func Encrypt(plaintext, passphrase string) (string, error) {
 }
 
 // Decrypt decrypts a base64-encoded string produced by Encrypt.
-func Decrypt(encoded, passphrase string) (string, error) {
+func Decrypt(encoded string, passphrase string) (string, error) {
 
 	combined, err := base64.StdEncoding.DecodeString(encoded)
 	if err != nil {
