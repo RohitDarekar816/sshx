@@ -31,7 +31,7 @@ func TestSaveAndLoadEncryptedKey(t *testing.T) {
 	}
 }
 
-func TestLoadEncryptedKey_NotFound(t *testing.T) {
+func TestLoadEncryptedKeyNotFound(t *testing.T) {
 	dir := t.TempDir()
 	_, err := LoadEncryptedKey(dir, "nonexistent")
 	if err == nil {
@@ -63,7 +63,7 @@ func TestEncryptAndDecryptKey(t *testing.T) {
 	}
 }
 
-func TestDecryptKey_WrongPassphrase(t *testing.T) {
+func TestDecryptKeyWrongPassphrase(t *testing.T) {
 	dir := t.TempDir()
 	src := filepath.Join(dir, "id_rsa")
 	if err := os.WriteFile(src, []byte("data"), 0600); err != nil {
