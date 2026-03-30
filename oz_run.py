@@ -125,43 +125,7 @@ def fetch_issue(repo: str, issue_number: int | None, label: str | None, state: s
     return issues[0]
 
 
-def main() -> int:
-    args = parse_args()
-
-    client = OzAPI(
-        api_key=os.environ.get("WARP_API_KEY"),
-    )
-
-    prompt = args.prompt
-    if not prompt:
-        if not args.repo:
-            raise SystemExit("--repo is required when --prompt is not provided.")
-
-        issue = fetch_issue(
-            repo=args.repo,
-            issue_number=args.issue_number,
-            label=args.label,
-            state=args.state,
-        )
-        if args.issue_pick == "newest" and args.issue_number is None:
-            # Re-fetch with descending sort to avoid extra list logic.
-            token = os.environ.get("GITHUB_TOKEN")
-            params = {
-                "state": args.state,
-                "per_page": "30",
-                "sort": "created",
-                "direction": "desc",
-            }
-            if args.label:
-                params["labels"] = args.label
-            query = urllib.parse.urlencode(params)
-            url = f"https://api.github.com/repos/{args.repo}/issues?{query}"
-            issues = github_api_request(url, token)
-            if isinstance(issues, list) and issues:
-                issue = issues[0]
-
-        prompt = build_issue_prompt(args.repo, issue)
-
+def build_config(args: argparse.Namespace) -> dict:
     config = {}
     if args.environment_id:
         config["environment_id"] = args.environment_id
@@ -171,6 +135,58 @@ def main() -> int:
         config["base_prompt"] = args.base_prompt
     if args.name:
         config["name"] = args.name
+    return config
+
+
+def get_issue_prompt(args: argparse.Namespace) -> str:
+    if not args.repo:
+        raise SystemExit("--repo is required when --prompt is not provided.")
+
+    issue = fetch_issue(
+        repo=args.repo,
+        issue_number=args.issue_number,
+        label=args.label,
+        state=args.state,
+    )
+
+    if args.issue_pick == "newest" and args.issue_number is None:
+        newest_issue = fetch_newest_issue(args)
+        if newest_issue is not None:
+            issue = newest_issue
+
+    return build_issue_prompt(args.repo, issue)
+
+
+def fetch_newest_issue(args: argparse.Namespace) -> dict | None:
+    token = os.environ.get("GITHUB_TOKEN")
+    params = {
+        "state": args.state,
+        "per_page": "30",
+        "sort": "created",
+        "direction": "desc",
+    }
+    if args.label:
+        params["labels"] = args.label
+    query = urllib.parse.urlencode(params)
+    url = f"https://api.github.com/repos/{args.repo}/issues?{query}"
+    issues = github_api_request(url, token)
+    if isinstance(issues, list) and issues:
+        return issues[0]
+    return None
+
+
+def main() -> int:
+    args = parse_args()
+
+    client = OzAPI(
+        api_key=os.environ.get("WARP_API_KEY"),
+    )
+
+    prompt = args.prompt
+    if not prompt:
+        prompt = get_issue_prompt(args)
+
+    config = build_config(args)
 
     response = client.agent.run(
         prompt=prompt,
