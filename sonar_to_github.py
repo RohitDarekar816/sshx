@@ -190,6 +190,64 @@ def issue_fingerprint(component: str, line: Optional[object], rule_key: str, mes
     return hashlib.sha256(raw.encode("utf-8")).hexdigest()[:16]
 
 
+def _load_cache_from_disk() -> Tuple[Optional[dict], Optional[str]]:
+    cache_dir = os.getenv("XDG_CACHE_HOME", "/tmp")
+    cache_path = os.path.join(cache_dir, "sonar_to_github_issues_cache.json")
+    try:
+        with open(cache_path, "r", encoding="utf-8") as handle:
+            cache_data = json.load(handle)
+            return cache_data, cache_data.get("etag")
+    except (FileNotFoundError, json.JSONDecodeError, OSError):
+        return None, None
+
+
+def _extract_issue_markers(body: str) -> Tuple[Optional[str], Optional[str]]:
+    sonar_key = None
+    fingerprint = None
+    match_key = re.search(r"Sonar Issue Key:\s*([A-Za-z0-9:_-]+)", body)
+    if match_key:
+        sonar_key = match_key.group(1)
+    match_fp = re.search(r"Sonar Fingerprint:\s*([0-9a-f]{16})", body)
+    if match_fp:
+        fingerprint = match_fp.group(1)
+    return sonar_key, fingerprint
+
+
+def _use_cached_data(
+    cache_data: Optional[dict],
+    sonar_keys: Set[str],
+    fingerprints: Set[str],
+) -> bool:
+    if not cache_data:
+        return False
+    cached_keys = cache_data.get("sonar_keys", [])
+    cached_fps = cache_data.get("fingerprints", [])
+    if isinstance(cached_keys, list):
+        sonar_keys.update(k for k in cached_keys if isinstance(k, str))
+    if isinstance(cached_fps, list):
+        fingerprints.update(k for k in cached_fps if isinstance(k, str))
+    return True
+
+
+def _save_cache_to_disk(
+    cache_path: str,
+    sonar_keys: Set[str],
+    fingerprints: Set[str],
+    etag: Optional[str],
+) -> None:
+    new_cache = {
+        "etag": etag,
+        "sonar_keys": sorted(sonar_keys),
+        "fingerprints": sorted(fingerprints),
+    }
+    try:
+        os.makedirs(os.path.dirname(cache_path), exist_ok=True)
+        with open(cache_path, "w", encoding="utf-8") as handle:
+            json.dump(new_cache, handle)
+    except OSError:
+        pass
+
+
 def load_existing_issue_markers(
     session: requests.Session,
     repo: str,
@@ -199,20 +257,11 @@ def load_existing_issue_markers(
 
     cache_dir = os.getenv("XDG_CACHE_HOME", "/tmp")
     cache_path = os.path.join(cache_dir, "sonar_to_github_issues_cache.json")
-    cache_etag: Optional[str] = None
-    cache_data: Optional[dict] = None
-
-    try:
-        with open(cache_path, "r", encoding="utf-8") as handle:
-            cache_data = json.load(handle)
-            cache_etag = cache_data.get("etag")
-    except FileNotFoundError:
-        cache_data = None
-    except (json.JSONDecodeError, OSError):
-        cache_data = None
+    cache_data, cache_etag = _load_cache_from_disk()
 
     page = 1
     used_cache = False
+    last_etag: Optional[str] = None
     while True:
         headers = {}
         if page == 1 and cache_etag:
@@ -223,14 +272,8 @@ def load_existing_issue_markers(
             headers=headers,
             timeout=20,
         )
-        if resp.status_code == 304 and page == 1 and cache_data:
-            cached_keys = cache_data.get("sonar_keys", [])
-            cached_fps = cache_data.get("fingerprints", [])
-            if isinstance(cached_keys, list):
-                sonar_keys.update(k for k in cached_keys if isinstance(k, str))
-            if isinstance(cached_fps, list):
-                fingerprints.update(k for k in cached_fps if isinstance(k, str))
-            used_cache = True
+        if resp.status_code == 304 and page == 1:
+            used_cache = _use_cached_data(cache_data, sonar_keys, fingerprints)
             break
         if not resp.ok:
             raise RuntimeError(
@@ -241,26 +284,16 @@ def load_existing_issue_markers(
             break
         for issue in issues:
             body = str(issue.get("body", "") or "")
-            match_key = re.search(r"Sonar Issue Key:\s*([A-Za-z0-9:_-]+)", body)
-            if match_key:
-                sonar_keys.add(match_key.group(1))
-            match_fp = re.search(r"Sonar Fingerprint:\s*([0-9a-f]{16})", body)
-            if match_fp:
-                fingerprints.add(match_fp.group(1))
+            key, fp = _extract_issue_markers(body)
+            if key:
+                sonar_keys.add(key)
+            if fp:
+                fingerprints.add(fp)
+        last_etag = resp.headers.get("ETag")
         page += 1
 
-    if not used_cache and cache_path:
-        new_cache = {
-            "etag": resp.headers.get("ETag") if "resp" in locals() else None,
-            "sonar_keys": sorted(sonar_keys),
-            "fingerprints": sorted(fingerprints),
-        }
-        try:
-            os.makedirs(os.path.dirname(cache_path), exist_ok=True)
-            with open(cache_path, "w", encoding="utf-8") as handle:
-                json.dump(new_cache, handle)
-        except OSError:
-            pass
+    if not used_cache:
+        _save_cache_to_disk(cache_path, sonar_keys, fingerprints, last_etag)
 
     return sonar_keys, fingerprints
 
