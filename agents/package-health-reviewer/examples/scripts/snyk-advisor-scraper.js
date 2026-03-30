@@ -104,7 +104,7 @@ async function scrapePackageHealth(packageName, registry = 'npm') {
           const text = element.textContent;
           const scoreMatch = text.match(/(\d+)\/100|(\d+)%|(\d+\.\d+)/);
           if (scoreMatch) {
-            return parseInt(scoreMatch[1] || scoreMatch[2] || scoreMatch[3]);
+            return Number.parseInt(scoreMatch[1] || scoreMatch[2] || scoreMatch[3]);
           }
         }
         return null;
@@ -121,10 +121,10 @@ async function scrapePackageHealth(packageName, registry = 'npm') {
           const mediumMatch = text.match(/(\d+)\s*medium/);
           const lowMatch = text.match(/(\d+)\s*low/);
           
-          if (criticalMatch) vulnerabilities.critical = parseInt(criticalMatch[1]);
-          if (highMatch) vulnerabilities.high = parseInt(highMatch[1]);
-          if (mediumMatch) vulnerabilities.medium = parseInt(mediumMatch[1]);
-          if (lowMatch) vulnerabilities.low = parseInt(lowMatch[1]);
+          if (criticalMatch) vulnerabilities.critical = Number.parseInt(criticalMatch[1]);
+          if (highMatch) vulnerabilities.high = Number.parseInt(highMatch[1]);
+          if (mediumMatch) vulnerabilities.medium = Number.parseInt(mediumMatch[1]);
+          if (lowMatch) vulnerabilities.low = Number.parseInt(lowMatch[1]);
         }
         
         vulnerabilities.total = vulnerabilities.critical + vulnerabilities.high + 
@@ -150,7 +150,7 @@ async function scrapePackageHealth(packageName, registry = 'npm') {
           const text = element.textContent;
           const starMatch = text.match(/([\d,]+)\s*stars?/i);
           if (starMatch) {
-            popularity.githubStars = parseInt(starMatch[1].replace(/,/g, ''));
+            popularity.githubStars = Number.parseInt(starMatch[1].replace(/,/g, ''));
             break;
           }
         }
@@ -186,7 +186,7 @@ async function scrapePackageHealth(packageName, registry = 'npm') {
         scoreCards.forEach(card => {
           const text = card.textContent.toLowerCase();
           const scoreMatch = text.match(/(\d+)/);
-          const score = scoreMatch ? parseInt(scoreMatch[1]) : null;
+          const score = scoreMatch ? Number.parseInt(scoreMatch[1]) : null;
           
           if (text.includes('security') && score !== null) {
             result.securityScore = score;
