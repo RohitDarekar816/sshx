@@ -126,16 +126,16 @@ def fetch_issue(repo: str, issue_number: int | None, label: str | None, state: s
 
 
 def build_config(args: argparse.Namespace) -> dict:
-    config = {}
-    if args.environment_id:
-        config["environment_id"] = args.environment_id
-    if args.model_id:
-        config["model_id"] = args.model_id
-    if args.base_prompt:
-        config["base_prompt"] = args.base_prompt
-    if args.name:
-        config["name"] = args.name
-    return config
+    return {
+        key: value
+        for key, value in (
+            ("environment_id", args.environment_id),
+            ("model_id", args.model_id),
+            ("base_prompt", args.base_prompt),
+            ("name", args.name),
+        )
+        if value
+    }
 
 
 def get_issue_prompt(args: argparse.Namespace) -> str:
