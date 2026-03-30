@@ -55,147 +55,134 @@ async function scrapePackageHealth(packageName, registry = 'npm') {
     // Wait for the main content to load
     await page.waitForSelector('[data-testid="package-header"]', { timeout: 10000 });
     
-    // Extract package health metrics
     const metrics = await page.evaluate(() => {
-      const result = {
-        packageName: '',
-        exists: false,
-        deprecated: false,
-        securityScore: null,
-        popularityScore: null,
-        maintenanceScore: null,
-        communityScore: null,
-        overallScore: null,
-        vulnerabilities: {
-          critical: 0,
-          high: 0,
-          medium: 0,
-          low: 0,
-          total: 0
-        },
-        popularity: {
-          weeklyDownloads: '',
-          githubStars: 0,
-          dependents: 0
-        },
-        maintenance: {
-          lastUpdate: '',
-          updateFrequency: '',
-          maintainerResponse: ''
-        },
-        community: {
-          githubActivity: '',
-          documentation: '',
-          issues: 0
-        },
-        recommendations: [],
-        alternatives: [],
-        rawData: {}
-      };
-      
-      try {
-        // Check if package exists
+      function createResultObject() {
+        return {
+          packageName: '',
+          exists: false,
+          deprecated: false,
+          securityScore: null,
+          popularityScore: null,
+          maintenanceScore: null,
+          communityScore: null,
+          overallScore: null,
+          vulnerabilities: { critical: 0, high: 0, medium: 0, low: 0, total: 0 },
+          popularity: { weeklyDownloads: '', githubStars: 0, dependents: 0 },
+          maintenance: { lastUpdate: '', updateFrequency: '', maintainerResponse: '' },
+          community: { githubActivity: '', documentation: '', issues: 0 },
+          recommendations: [],
+          alternatives: [],
+          rawData: {}
+        };
+      }
+
+      function checkPackageExists() {
         const notFoundIndicator = document.querySelector('[data-testid="not-found"]') || 
                                  document.querySelector('.not-found') ||
                                  document.body.textContent.includes('Package not found');
-        
-        if (notFoundIndicator) {
-          return { ...result, error: 'Package not found' };
-        }
-        
-        result.exists = true;
-        
-        // Extract package name
+        return !!notFoundIndicator;
+      }
+
+      function extractPackageName() {
         const packageHeader = document.querySelector('[data-testid="package-header"]') ||
                              document.querySelector('h1') ||
                              document.querySelector('.package-name');
-        if (packageHeader) {
-          result.packageName = packageHeader.textContent.trim();
-        }
-        
-        // Check for deprecation warning
+        return packageHeader ? packageHeader.textContent.trim() : '';
+      }
+
+      function checkDeprecation() {
         const deprecationWarning = document.querySelector('[data-testid="deprecation-warning"]') ||
                                   document.querySelector('.deprecation') ||
                                   Array.from(document.querySelectorAll('*')).find(el => 
                                     el.textContent.toLowerCase().includes('deprecated'));
-        result.deprecated = !!deprecationWarning;
-        
-        // Extract overall score (usually displayed prominently)
+        return !!deprecationWarning;
+      }
+
+      function extractOverallScore() {
         const scoreElements = document.querySelectorAll('[data-testid*="score"], .score, .rating');
         for (const element of scoreElements) {
           const text = element.textContent;
           const scoreMatch = text.match(/(\d+)\/100|(\d+)%|(\d+\.\d+)/);
           if (scoreMatch) {
-            result.overallScore = parseInt(scoreMatch[1] || scoreMatch[2] || scoreMatch[3]);
-            break;
+            return parseInt(scoreMatch[1] || scoreMatch[2] || scoreMatch[3]);
           }
         }
-        
-        // Extract security vulnerabilities
+        return null;
+      }
+
+      function extractVulnerabilities() {
         const vulnElements = document.querySelectorAll('[data-testid*="vulnerability"], .vulnerability, .security');
+        const vulnerabilities = { critical: 0, high: 0, medium: 0, low: 0, total: 0 };
+        
         for (const element of vulnElements) {
           const text = element.textContent.toLowerCase();
-          
-          // Look for vulnerability counts
           const criticalMatch = text.match(/(\d+)\s*critical/);
           const highMatch = text.match(/(\d+)\s*high/);
           const mediumMatch = text.match(/(\d+)\s*medium/);
           const lowMatch = text.match(/(\d+)\s*low/);
           
-          if (criticalMatch) result.vulnerabilities.critical = parseInt(criticalMatch[1]);
-          if (highMatch) result.vulnerabilities.high = parseInt(highMatch[1]);
-          if (mediumMatch) result.vulnerabilities.medium = parseInt(mediumMatch[1]);
-          if (lowMatch) result.vulnerabilities.low = parseInt(lowMatch[1]);
+          if (criticalMatch) vulnerabilities.critical = parseInt(criticalMatch[1]);
+          if (highMatch) vulnerabilities.high = parseInt(highMatch[1]);
+          if (mediumMatch) vulnerabilities.medium = parseInt(mediumMatch[1]);
+          if (lowMatch) vulnerabilities.low = parseInt(lowMatch[1]);
         }
         
-        result.vulnerabilities.total = result.vulnerabilities.critical + 
-                                      result.vulnerabilities.high + 
-                                      result.vulnerabilities.medium + 
-                                      result.vulnerabilities.low;
+        vulnerabilities.total = vulnerabilities.critical + vulnerabilities.high + 
+                               vulnerabilities.medium + vulnerabilities.low;
+        return vulnerabilities;
+      }
+
+      function extractPopularityMetrics() {
+        const popularity = { weeklyDownloads: '', githubStars: 0, dependents: 0 };
         
-        // Extract popularity metrics
         const downloadElements = document.querySelectorAll('[data-testid*="download"], .downloads, .popularity');
         for (const element of downloadElements) {
           const text = element.textContent;
           const downloadMatch = text.match(/([\d,]+[KMB]?)\s*(weekly|downloads)/i);
           if (downloadMatch) {
-            result.popularity.weeklyDownloads = downloadMatch[1];
+            popularity.weeklyDownloads = downloadMatch[1];
             break;
           }
         }
         
-        // Extract GitHub stars
         const starElements = document.querySelectorAll('[data-testid*="star"], .stars, .github');
         for (const element of starElements) {
           const text = element.textContent;
           const starMatch = text.match(/([\d,]+)\s*stars?/i);
           if (starMatch) {
-            result.popularity.githubStars = parseInt(starMatch[1].replace(/,/g, ''));
+            popularity.githubStars = parseInt(starMatch[1].replace(/,/g, ''));
             break;
           }
         }
         
-        // Extract maintenance information
+        return popularity;
+      }
+
+      function extractMaintenanceInfo() {
+        const maintenance = { lastUpdate: '', updateFrequency: '', maintainerResponse: '' };
+        
         const maintenanceElements = document.querySelectorAll('[data-testid*="maintenance"], .maintenance, .updated');
         for (const element of maintenanceElements) {
           const text = element.textContent;
-          
-          // Look for last update date
           const dateMatch = text.match(/(\d{4}-\d{2}-\d{2}|\d+\s*(days?|months?|years?)\s*ago)/i);
           if (dateMatch) {
-            result.maintenance.lastUpdate = dateMatch[1];
+            maintenance.lastUpdate = dateMatch[1];
           }
           
-          // Look for maintenance frequency indicators
           if (text.toLowerCase().includes('regular')) {
-            result.maintenance.updateFrequency = 'regular';
+            maintenance.updateFrequency = 'regular';
           } else if (text.toLowerCase().includes('infrequent')) {
-            result.maintenance.updateFrequency = 'infrequent';
+            maintenance.updateFrequency = 'infrequent';
           }
         }
         
-        // Extract individual scores if available
+        return maintenance;
+      }
+
+      function extractScoreCards() {
+        const result = { securityScore: null, popularityScore: null, maintenanceScore: null, communityScore: null };
         const scoreCards = document.querySelectorAll('.score-card, [data-testid*="score-card"]');
+        
         scoreCards.forEach(card => {
           const text = card.textContent.toLowerCase();
           const scoreMatch = text.match(/(\d+)/);
@@ -212,27 +199,67 @@ async function scrapePackageHealth(packageName, registry = 'npm') {
           }
         });
         
-        // Extract recommendations and alternatives
+        return result;
+      }
+
+      function extractRecommendationsAndAlternatives() {
+        const recommendations = [];
+        const alternatives = [];
+        
         const recommendationElements = document.querySelectorAll('[data-testid*="recommendation"], .recommendation, .alternative');
         recommendationElements.forEach(element => {
           const text = element.textContent.trim();
           if (text && text.length > 10) {
             if (element.textContent.toLowerCase().includes('alternative')) {
-              result.alternatives.push(text);
+              alternatives.push(text);
             } else {
-              result.recommendations.push(text);
+              recommendations.push(text);
             }
           }
         });
         
-        // Store raw data for debugging
-        result.rawData = {
+        return { recommendations, alternatives };
+      }
+
+      function extractRawData(scoreCards, vulnElements, downloadElements) {
+        return {
           title: document.title,
           url: window.location.href,
           hasScoreCards: scoreCards.length > 0,
           hasVulnerabilities: vulnElements.length > 0,
           hasPopularityData: downloadElements.length > 0
         };
+      }
+
+      const result = createResultObject();
+      
+      try {
+        if (checkPackageExists()) {
+          return { ...result, error: 'Package not found' };
+        }
+        
+        result.exists = true;
+        result.packageName = extractPackageName();
+        result.deprecated = checkDeprecation();
+        result.overallScore = extractOverallScore();
+        
+        const vulnElements = document.querySelectorAll('[data-testid*="vulnerability"], .vulnerability, .security');
+        result.vulnerabilities = extractVulnerabilities();
+        
+        const downloadElements = document.querySelectorAll('[data-testid*="download"], .downloads, .popularity');
+        result.popularity = extractPopularityMetrics();
+        
+        result.maintenance = extractMaintenanceInfo();
+        
+        const scoreCards = document.querySelectorAll('.score-card, [data-testid*="score-card"]');
+        const scoreCardResults = extractScoreCards();
+        Object.assign(result, scoreCardResults);
+        
+        const recs = extractRecommendationsAndAlternatives();
+        result.recommendations = recs.recommendations;
+        result.alternatives = recs.alternatives;
+        
+        result.rawData = extractRawData(scoreCards, vulnElements, downloadElements);
         
         return result;
         
