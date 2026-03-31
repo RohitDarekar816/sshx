@@ -317,7 +317,7 @@ function calculateHealthScore(metrics) {
   // Popularity factor (20% weight)
   const downloads = metrics.popularity.weeklyDownloads;
   if (downloads) {
-    const downloadNum = parseFloat(downloads.replace(/[KMB,]/g, ''));
+    const downloadNum = Number.parseFloat(downloads.replace(/[KMB,]/g, ''));
     const multiplier = downloads.includes('M') ? 1000000 : 
                       downloads.includes('K') ? 1000 : 1;
     const weeklyDownloads = downloadNum * multiplier;
