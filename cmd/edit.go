@@ -1,14 +1,10 @@
 package cmd
 
 import (
-	"bufio"
 	"fmt"
-	"os"
-	"strings"
 
 	"github.com/RohitDarekar816/sshx/internal/config"
 	"github.com/RohitDarekar816/sshx/internal/crypto"
-	"github.com/RohitDarekar816/sshx/internal/git"
 	"github.com/RohitDarekar816/sshx/internal/server"
 	"github.com/spf13/cobra"
 )
@@ -23,34 +19,31 @@ var clearPassword bool
 var clearKeyRef bool
 
 var editCmd = &cobra.Command{
-	Use:   "edit [server]",
-	Short: "Edit a server",
-	Args:  cobra.ExactArgs(1),
+	Use:               "edit [server]",
+	Short:             "Edit a server",
+	Args:              cobra.ExactArgs(1),
+	ValidArgsFunction: completeServerNames,
 
-	Run: func(cmd *cobra.Command, args []string) {
+	RunE: func(cmd *cobra.Command, args []string) error {
 
 		name := args[0]
 		repoDir := config.GetRepoDir()
 
 		s, err := server.LoadServer(repoDir, name)
 		if err != nil {
-			fmt.Println("Server not found:", name)
-			return
+			return fmt.Errorf("server not found: %s", name)
 		}
 
 		if clearPassword && cmd.Flags().Changed("password") {
-			fmt.Println("Error: --clear-password cannot be used with --password")
-			return
+			return fmt.Errorf("--clear-password cannot be used with --password")
 		}
 
 		if clearKeyRef && cmd.Flags().Changed(flagKeyRef) {
-			fmt.Println("Error: --clear-key-ref cannot be used with --key-ref")
-			return
+			return fmt.Errorf("--clear-key-ref cannot be used with --key-ref")
 		}
 
 		if cmd.Flags().Changed("key") && cmd.Flags().Changed(flagKeyRef) {
-			fmt.Println("Error: --key and --key-ref cannot be used together")
-			return
+			return fmt.Errorf("--key and --key-ref cannot be used together")
 		}
 
 		if cmd.Flags().Changed("host") {
@@ -84,34 +77,17 @@ var editCmd = &cobra.Command{
 
 		if cmd.Flags().Changed("password") {
 			if editPassword == "" {
-				fmt.Println("Error: password cannot be empty. Use --clear-password to remove it.")
-				return
+				return fmt.Errorf("password cannot be empty; use --clear-password to remove it")
 			}
 
-			reader := bufio.NewReader(os.Stdin)
-
-			fmt.Print("Enter encryption passphrase: ")
-			passphrase, _ := reader.ReadString('\n')
-			passphrase = strings.TrimSpace(passphrase)
-
-			if passphrase == "" {
-				fmt.Println("Error: passphrase cannot be empty")
-				return
-			}
-
-			fmt.Print("Confirm passphrase: ")
-			confirm, _ := reader.ReadString('\n')
-			confirm = strings.TrimSpace(confirm)
-
-			if passphrase != confirm {
-				fmt.Println("Error: passphrases do not match")
-				return
+			passphrase, err := readConfirmedSecret("Enter encryption passphrase: ")
+			if err != nil {
+				return err
 			}
 
 			encrypted, err := crypto.Encrypt(editPassword, passphrase)
 			if err != nil {
-				fmt.Println("Error encrypting password:", err)
-				return
+				return fmt.Errorf("encrypting password: %w", err)
 			}
 
 			s.Password = encrypted
@@ -125,21 +101,19 @@ var editCmd = &cobra.Command{
 
 		checked, err := server.ValidateAndRepair(*s)
 		if err != nil {
-			fmt.Println("Invalid server:", err)
-			return
+			return fmt.Errorf("invalid server: %w", err)
 		}
 
 		if err := server.SaveServer(repoDir, *checked); err != nil {
-			fmt.Println("Error saving server:", err)
-			return
+			return fmt.Errorf("saving server: %w", err)
 		}
 
-		if err := git.CommitAndPush(repoDir, "Edit server "+name); err != nil {
-			fmt.Println("Git error:", err)
-			return
+		if err := commitAndPush(repoDir, "Edit server "+name); err != nil {
+			return fmt.Errorf("git error: %w", err)
 		}
 
 		fmt.Println("Server updated:", name)
+		return nil
 	},
 }
 

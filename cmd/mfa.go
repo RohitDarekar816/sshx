@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"bufio"
 	"errors"
 	"fmt"
 	"os"
@@ -11,7 +10,11 @@ import (
 	"github.com/RohitDarekar816/sshx/internal/config"
 	"github.com/RohitDarekar816/sshx/internal/crypto"
 	"github.com/RohitDarekar816/sshx/internal/totp"
+	"github.com/mdp/qrterminal/v3"
 )
+
+// envPassphrase lets automation supply the vault passphrase non-interactively.
+const envPassphrase = "SSHX_PASSPHRASE"
 
 func requireMFA(repoDir string) (string, error) {
 
@@ -21,12 +24,12 @@ func requireMFA(repoDir string) (string, error) {
 	}
 
 	email := strings.TrimSpace(cfg.UserEmail)
-	reader := bufio.NewReader(os.Stdin)
 
 	if email == "" {
-		fmt.Print("Enter your email: ")
-		email, _ = reader.ReadString('\n')
-		email = strings.TrimSpace(email)
+		email, err = readLine("Enter your email: ")
+		if err != nil {
+			return "", err
+		}
 		if email == "" {
 			return "", errors.New("email is required")
 		}
@@ -38,9 +41,13 @@ func requireMFA(repoDir string) (string, error) {
 		return "", errors.New("TOTP not set up. Run `sshx auth` first")
 	}
 
-	fmt.Print("Enter vault passphrase: ")
-	passphrase, _ := reader.ReadString('\n')
-	passphrase = strings.TrimSpace(passphrase)
+	passphrase := os.Getenv(envPassphrase)
+	if passphrase == "" {
+		passphrase, err = readSecret("Enter vault passphrase: ")
+		if err != nil {
+			return "", err
+		}
+	}
 	if passphrase == "" {
 		return "", errors.New("passphrase cannot be empty")
 	}
@@ -55,13 +62,50 @@ func requireMFA(repoDir string) (string, error) {
 		return "", errors.New("invalid passphrase or corrupt TOTP secret")
 	}
 
-	fmt.Print("Enter TOTP code: ")
-	code, _ := reader.ReadString('\n')
-	code = strings.TrimSpace(code)
+	code, err := readLine("Enter TOTP code: ")
+	if err != nil {
+		return "", err
+	}
 
 	if !totp.Validate(secret, code, time.Now()) {
 		return "", errors.New("invalid TOTP code")
 	}
 
 	return passphrase, nil
+}
+
+func setupTOTP(repoDir, email string) error {
+
+	secret, err := totp.GenerateSecret()
+	if err != nil {
+		return err
+	}
+
+	fmt.Println("TOTP setup required.")
+	fmt.Println("Scan this QR code with your authenticator app:")
+	otpURL := totp.OTPAuthURL("sshx", email, secret)
+	qrterminal.GenerateHalfBlock(otpURL, qrterminal.L, os.Stdout)
+	fmt.Println("If you cannot scan the QR code, use this URL:")
+	fmt.Println(otpURL)
+	fmt.Println("Manual secret:", secret)
+
+	code, err := readLine("Enter the current TOTP code to verify: ")
+	if err != nil {
+		return err
+	}
+	if !totp.Validate(secret, code, time.Now()) {
+		return fmt.Errorf("invalid TOTP code")
+	}
+
+	passphrase, err := readConfirmedSecret("Create vault passphrase: ")
+	if err != nil {
+		return err
+	}
+
+	encrypted, err := crypto.Encrypt(secret, passphrase)
+	if err != nil {
+		return err
+	}
+
+	return totp.SaveEncryptedSecret(repoDir, email, encrypted)
 }

@@ -4,32 +4,31 @@ import (
 	"fmt"
 
 	"github.com/RohitDarekar816/sshx/internal/config"
-	"github.com/RohitDarekar816/sshx/internal/git"
 	"github.com/RohitDarekar816/sshx/internal/server"
 	"github.com/spf13/cobra"
 )
 
 var removeCmd = &cobra.Command{
-	Use:   "remove [server]",
-	Short: "Remove a server",
-	Args:  cobra.ExactArgs(1),
+	Use:               "remove [server]",
+	Short:             "Remove a server",
+	Args:              cobra.ExactArgs(1),
+	ValidArgsFunction: completeServerNames,
 
-	Run: func(cmd *cobra.Command, args []string) {
+	RunE: func(cmd *cobra.Command, args []string) error {
 
 		name := args[0]
 		repoDir := config.GetRepoDir()
 
 		if err := server.RemoveServer(repoDir, name); err != nil {
-			fmt.Println("Error removing server:", err)
-			return
+			return fmt.Errorf("removing server: %w", err)
 		}
 
-		if err := git.CommitAndPush(repoDir, "Remove server "+name); err != nil {
-			fmt.Println("Git error:", err)
-			return
+		if err := commitAndPush(repoDir, "Remove server "+name); err != nil {
+			return fmt.Errorf("git error: %w", err)
 		}
 
 		fmt.Println("Server removed:", name)
+		return nil
 	},
 }
 
