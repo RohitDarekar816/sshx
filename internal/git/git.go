@@ -35,8 +35,10 @@ func CloneRepo(repoURL, path string) error {
 	return nil
 }
 
-// CommitAndPush stages all changes, commits them, and pushes to remote
-func CommitAndPush(repoPath, message string) error {
+// CommitAndPush stages all changes, commits them, and pushes to remote.
+// The commit is attributed to the given author so the shared repo carries a
+// meaningful per-user audit trail; empty values fall back to a local identity.
+func CommitAndPush(repoPath, message, authorName, authorEmail string) error {
 
 	repo, err := git.PlainOpen(repoPath)
 	if err != nil {
@@ -54,18 +56,22 @@ func CommitAndPush(repoPath, message string) error {
 		return err
 	}
 
+	if authorName == "" {
+		authorName = "sshx"
+	}
+	if authorEmail == "" {
+		authorEmail = "sshx@local"
+	}
+	sig := &object.Signature{
+		Name:  authorName,
+		Email: authorEmail,
+		When:  time.Now(),
+	}
+
 	// Commit changes
 	_, err = w.Commit(message, &git.CommitOptions{
-		Author: &object.Signature{
-			Name:  "sshx",
-			Email: "sshx@local",
-			When:  time.Now(),
-		},
-		Committer: &object.Signature{
-			Name:  "sshx",
-			Email: "sshx@local",
-			When:  time.Now(),
-		},
+		Author:    sig,
+		Committer: sig,
 	})
 
 	if err != nil {

@@ -1,17 +1,19 @@
 package ssh
 
 import (
-	"bufio"
 	"fmt"
 	"os"
 	"os/exec"
-	"strings"
 
 	"github.com/RohitDarekar816/sshx/internal/crypto"
 	"github.com/RohitDarekar816/sshx/internal/server"
+	"golang.org/x/term"
 )
 
-func Connect(s *server.Server, passphrase string) {
+// Connect builds the ssh invocation for the given profile and hands control to
+// the system ssh client, forwarding stdio. It returns an error if the profile's
+// password cannot be decrypted or the ssh process exits non-zero.
+func Connect(s *server.Server, passphrase string) error {
 
 	target := fmt.Sprintf("%s@%s", s.User, s.Host)
 
@@ -40,16 +42,22 @@ func Connect(s *server.Server, passphrase string) {
 
 	if s.Password != "" {
 		if passphrase == "" {
-			reader := bufio.NewReader(os.Stdin)
 			fmt.Print("Enter decryption passphrase: ")
-			passphrase, _ = reader.ReadString('\n')
-			passphrase = strings.TrimSpace(passphrase)
+			if term.IsTerminal(int(os.Stdin.Fd())) {
+				data, err := term.ReadPassword(int(os.Stdin.Fd()))
+				fmt.Println()
+				if err != nil {
+					return fmt.Errorf("reading passphrase: %w", err)
+				}
+				passphrase = string(data)
+			} else {
+				fmt.Fscanln(os.Stdin, &passphrase)
+			}
 		}
 
 		plainPassword, err := crypto.Decrypt(s.Password, passphrase)
 		if err != nil {
-			fmt.Println("Error:", err)
-			return
+			return fmt.Errorf("decrypting password: %w", err)
 		}
 
 		if _, err := exec.LookPath("sshpass"); err == nil {
@@ -72,10 +80,10 @@ func Connect(s *server.Server, passphrase string) {
 	err := cmd.Run()
 	if err != nil {
 		if usedSshpass {
-			fmt.Println("Connection failed:", err)
-			fmt.Println("sshpass was detected and used. Verify the password, server auth settings, and SSH reachability.")
-		} else {
-			fmt.Println("Connection failed:", err)
+			return fmt.Errorf("connection failed: %w\nsshpass was detected and used; verify the password, server auth settings, and SSH reachability", err)
 		}
+		return fmt.Errorf("connection failed: %w", err)
 	}
+
+	return nil
 }

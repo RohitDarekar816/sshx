@@ -106,6 +106,43 @@ Example:
 
 ---
 
+## Shell Completion
+
+sshx ships Cobra-generated completions, including live completion of server and
+key names from your local repo:
+
+```bash
+# bash (current shell)
+source <(sshx completion bash)
+
+# zsh
+sshx completion zsh > "${fpath[1]}/_sshx"
+
+# fish
+sshx completion fish | source
+```
+
+Run `sshx completion --help` for permanent install instructions per shell.
+
+---
+
+## Automation / Non-Interactive Use
+
+Passphrases and passwords are read with echo disabled. When stdin is not a
+terminal (CI, scripts), sshx falls back to reading a plain line so it stays
+scriptable.
+
+To supply the vault passphrase without a prompt, set `SSHX_PASSPHRASE`:
+
+```bash
+SSHX_PASSPHRASE='my-vault-pass' sshx connect prod
+```
+
+Commands return a non-zero exit code on failure, so they compose cleanly in
+scripts.
+
+---
+
 ## Server Profile Format
 
 Server profiles live in the Git repo under `servers/` and are stored as YAML.

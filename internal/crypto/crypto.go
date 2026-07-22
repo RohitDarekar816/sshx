@@ -13,11 +13,11 @@ import (
 )
 
 const (
-	saltSize    = 16
-	keySize     = 32 // AES-256
-	scryptN     = 1 << 20 // CPU/memory cost (1048576) - OWASP recommended minimum
-	scryptR     = 8       // Block size
-	scryptP     = 1       // Parallelization
+	saltSize = 16
+	keySize  = 32      // AES-256
+	scryptN  = 1 << 20 // CPU/memory cost (1048576) - OWASP recommended minimum
+	scryptR  = 8       // Block size
+	scryptP  = 1       // Parallelization
 )
 
 // Encrypt encrypts plaintext using AES-256-GCM with a key derived from passphrase via scrypt.

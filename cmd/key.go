@@ -4,7 +4,6 @@ import (
 	"fmt"
 
 	"github.com/RohitDarekar816/sshx/internal/config"
-	"github.com/RohitDarekar816/sshx/internal/git"
 	"github.com/RohitDarekar816/sshx/internal/keys"
 	"github.com/spf13/cobra"
 )
@@ -21,33 +20,30 @@ var keyAddCmd = &cobra.Command{
 	Short: "Add an encrypted key",
 	Args:  cobra.ExactArgs(1),
 
-	Run: func(cmd *cobra.Command, args []string) {
+	RunE: func(cmd *cobra.Command, args []string) error {
 
 		name := args[0]
 		repoDir := config.GetRepoDir()
 
 		if keyFile == "" {
-			fmt.Println("Error: --file is required")
-			return
+			return fmt.Errorf("--file is required")
 		}
 
 		passphrase, err := requireMFA(repoDir)
 		if err != nil {
-			fmt.Println("Authentication failed:", err)
-			return
+			return fmt.Errorf("authentication failed: %w", err)
 		}
 
 		if err := keys.EncryptKeyFile(repoDir, name, keyFile, passphrase); err != nil {
-			fmt.Println("Error encrypting key:", err)
-			return
+			return fmt.Errorf("encrypting key: %w", err)
 		}
 
-		if err := git.CommitAndPush(repoDir, "Add encrypted key "+name); err != nil {
-			fmt.Println("Git error:", err)
-			return
+		if err := commitAndPush(repoDir, "Add encrypted key "+name); err != nil {
+			return fmt.Errorf("git error: %w", err)
 		}
 
 		fmt.Println("Key added:", name)
+		return nil
 	},
 }
 
@@ -55,55 +51,65 @@ var keyListCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List encrypted keys",
 
-	Run: func(cmd *cobra.Command, args []string) {
+	RunE: func(cmd *cobra.Command, args []string) error {
 
 		repoDir := config.GetRepoDir()
 		names, err := keys.ListKeys(repoDir)
 		if err != nil {
-			fmt.Println("Error listing keys:", err)
-			return
+			return fmt.Errorf("listing keys: %w", err)
 		}
 
 		if len(names) == 0 {
 			fmt.Println("No keys found")
-			return
+			return nil
 		}
 
 		fmt.Println("Keys:")
 		for _, n := range names {
 			fmt.Printf("- %s\n", n)
 		}
+		return nil
 	},
 }
 
 var keyRemoveCmd = &cobra.Command{
-	Use:   "remove [name]",
-	Short: "Remove an encrypted key",
-	Args:  cobra.ExactArgs(1),
+	Use:               "remove [name]",
+	Short:             "Remove an encrypted key",
+	Args:              cobra.ExactArgs(1),
+	ValidArgsFunction: completeKeyNames,
 
-	Run: func(cmd *cobra.Command, args []string) {
+	RunE: func(cmd *cobra.Command, args []string) error {
 
 		name := args[0]
 		repoDir := config.GetRepoDir()
 
-		_, err := requireMFA(repoDir)
-		if err != nil {
-			fmt.Println("Authentication failed:", err)
-			return
+		if _, err := requireMFA(repoDir); err != nil {
+			return fmt.Errorf("authentication failed: %w", err)
 		}
 
 		if err := keys.RemoveKey(repoDir, name); err != nil {
-			fmt.Println("Error removing key:", err)
-			return
+			return fmt.Errorf("removing key: %w", err)
 		}
 
-		if err := git.CommitAndPush(repoDir, "Remove encrypted key "+name); err != nil {
-			fmt.Println("Git error:", err)
-			return
+		if err := commitAndPush(repoDir, "Remove encrypted key "+name); err != nil {
+			return fmt.Errorf("git error: %w", err)
 		}
 
 		fmt.Println("Key removed:", name)
+		return nil
 	},
+}
+
+// completeKeyNames provides shell completion for encrypted key names.
+func completeKeyNames(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+	if len(args) != 0 {
+		return nil, cobra.ShellCompDirectiveNoFileComp
+	}
+	names, err := keys.ListKeys(config.GetRepoDir())
+	if err != nil {
+		return nil, cobra.ShellCompDirectiveNoFileComp
+	}
+	return names, cobra.ShellCompDirectiveNoFileComp
 }
 
 func init() {

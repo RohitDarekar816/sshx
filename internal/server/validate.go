@@ -5,10 +5,13 @@ import (
 	"strings"
 )
 
+// ValidateAndRepair normalizes a profile: it trims fields, applies defaults for
+// user/port, and resolves conflicting auth methods (password wins over keys, and
+// an explicit key wins over an inline key when both are set). It returns an error
+// only when a required field is missing or the port is out of range.
 func ValidateAndRepair(input Server) (*Server, error) {
 
 	s := input
-	changed := false
 
 	s.Name = strings.TrimSpace(s.Name)
 	s.Host = strings.TrimSpace(s.Host)
@@ -27,36 +30,30 @@ func ValidateAndRepair(input Server) (*Server, error) {
 
 	if s.User == "" {
 		s.User = "root"
-		changed = true
 	}
 
 	if s.Port == 0 {
 		s.Port = 22
-		changed = true
 	}
 
 	if s.Port < 1 || s.Port > 65535 {
 		return nil, fmt.Errorf("invalid port: %d", s.Port)
 	}
 
+	// Password auth takes precedence over any key material.
 	if s.Password != "" && (s.Key != "" || s.KeyRef != "") {
 		s.Key = ""
 		s.KeyRef = ""
-		changed = true
 	}
 
+	// A stored key reference takes precedence over an inline key path.
 	if s.Key != "" && s.KeyRef != "" {
 		s.Key = ""
-		changed = true
 	}
 
+	// Fall back to the conventional default key when no auth method is set.
 	if s.Key == "" && s.KeyRef == "" && s.Password == "" {
 		s.Key = "~/.ssh/id_rsa"
-		changed = true
-	}
-
-	if changed {
-		return &s, nil
 	}
 
 	return &s, nil

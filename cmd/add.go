@@ -1,14 +1,10 @@
 package cmd
 
 import (
-	"bufio"
 	"fmt"
-	"os"
-	"strings"
 
 	"github.com/RohitDarekar816/sshx/internal/config"
 	"github.com/RohitDarekar816/sshx/internal/crypto"
-	"github.com/RohitDarekar816/sshx/internal/git"
 	"github.com/RohitDarekar816/sshx/internal/server"
 	"github.com/spf13/cobra"
 )
@@ -25,7 +21,7 @@ var addCmd = &cobra.Command{
 	Short: "Add a new server",
 	Args:  cobra.ExactArgs(1),
 
-	Run: func(cmd *cobra.Command, args []string) {
+	RunE: func(cmd *cobra.Command, args []string) error {
 
 		name := args[0]
 
@@ -42,8 +38,7 @@ var addCmd = &cobra.Command{
 		}
 
 		if keyRef != "" && cmd.Flags().Changed("key") {
-			fmt.Println("Error: --key and --key-ref cannot be used together")
-			return
+			return fmt.Errorf("--key and --key-ref cannot be used together")
 		}
 
 		if keyRef != "" {
@@ -57,30 +52,14 @@ var addCmd = &cobra.Command{
 		if password != "" {
 			s.Key = ""
 
-			reader := bufio.NewReader(os.Stdin)
-
-			fmt.Print("Enter encryption passphrase: ")
-			passphrase, _ := reader.ReadString('\n')
-			passphrase = strings.TrimSpace(passphrase)
-
-			if passphrase == "" {
-				fmt.Println("Error: passphrase cannot be empty")
-				return
-			}
-
-			fmt.Print("Confirm passphrase: ")
-			confirm, _ := reader.ReadString('\n')
-			confirm = strings.TrimSpace(confirm)
-
-			if passphrase != confirm {
-				fmt.Println("Error: passphrases do not match")
-				return
+			passphrase, err := readConfirmedSecret("Enter encryption passphrase: ")
+			if err != nil {
+				return err
 			}
 
 			encrypted, err := crypto.Encrypt(password, passphrase)
 			if err != nil {
-				fmt.Println("Error encrypting password:", err)
-				return
+				return fmt.Errorf("encrypting password: %w", err)
 			}
 
 			s.Password = encrypted
@@ -88,23 +67,19 @@ var addCmd = &cobra.Command{
 
 		checked, err := server.ValidateAndRepair(s)
 		if err != nil {
-			fmt.Println("Invalid server:", err)
-			return
+			return fmt.Errorf("invalid server: %w", err)
 		}
 
-		err = server.SaveServer(repoDir, *checked)
-		if err != nil {
-			fmt.Println("Error saving server:", err)
-			return
+		if err := server.SaveServer(repoDir, *checked); err != nil {
+			return fmt.Errorf("saving server: %w", err)
 		}
 
-		err = git.CommitAndPush(repoDir, "Add server "+name)
-		if err != nil {
-			fmt.Println("Git error:", err)
-			return
+		if err := commitAndPush(repoDir, "Add server "+name); err != nil {
+			return fmt.Errorf("git error: %w", err)
 		}
 
 		fmt.Println("Server added:", name)
+		return nil
 	},
 }
 
