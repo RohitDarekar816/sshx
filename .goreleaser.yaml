@@ -1,0 +1,72 @@
+# GoReleaser configuration for sshx.
+# Docs: https://goreleaser.com
+#
+# Cut a release by pushing a semver tag:
+#   git tag -a v1.1.0 -m "v1.1.0" && git push origin v1.1.0
+# The Release workflow (.github/workflows/release.yml) runs GoReleaser, which
+# builds cross-platform binaries and publishes them to a GitHub Release.
+version: 2
+
+project_name: sshx
+
+before:
+  hooks:
+    - go mod tidy
+
+builds:
+  - id: sshx
+    main: .
+    binary: sshx
+    env:
+      - CGO_ENABLED=0
+    flags:
+      - -trimpath
+    ldflags:
+      - -s -w -X github.com/RohitDarekar816/sshx/cmd.version={{ .Version }}
+    goos:
+      - linux
+      - darwin
+      - windows
+    goarch:
+      - amd64
+      - arm64
+    ignore:
+      # Windows on arm64 is uncommon for this tool; skip to keep the matrix lean.
+      - goos: windows
+        goarch: arm64
+
+archives:
+  - id: default
+    formats:
+      - tar.gz
+    # Windows users get a .zip instead of a tarball.
+    format_overrides:
+      - goos: windows
+        formats:
+          - zip
+    files:
+      - README.md
+      - LICENSE
+      - ARCHITECTURE.md
+
+checksum:
+  name_template: checksums.txt
+
+snapshot:
+  version_template: "{{ incpatch .Version }}-next"
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
+      - "^chore:"
+      - "^ci:"
+      - "Merge pull request"
+      - "Merge branch"
+
+release:
+  # GitHub repo is auto-detected from the git remote.
+  draft: false
+  prerelease: auto

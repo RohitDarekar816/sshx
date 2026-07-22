@@ -15,38 +15,75 @@ sshx stores server profiles in a Git repository so teams can share and version-c
 
 ---
 
-## Quick Start
+## Install
 
-### 1) Install
+sshx ships as a single self-contained binary (no runtime dependencies beyond an
+`ssh` client; `sshpass` only if you use stored passwords).
+
+### Prebuilt binary (recommended)
+
+Download the archive for your OS/arch from the
+[latest release](https://github.com/RohitDarekar816/sshx/releases/latest),
+extract it, and put `sshx` on your `PATH`. For example, on Linux/macOS:
 
 ```bash
-go build -o sshx
+# pick the asset matching your platform, e.g. sshx_<ver>_linux_amd64.tar.gz
+curl -sSL -o sshx.tar.gz \
+  https://github.com/RohitDarekar816/sshx/releases/latest/download/sshx_<ver>_<os>_<arch>.tar.gz
+tar -xzf sshx.tar.gz sshx
+sudo install -m 0755 sshx /usr/local/bin/sshx
+sshx --version
 ```
 
-### 2) Authenticate with a repo
+Verify the download against `checksums.txt` from the same release if desired.
+
+### With Go
 
 ```bash
-./sshx auth git@github.com:USER/sshx-profiles.git
+go install github.com/RohitDarekar816/sshx@latest
+```
+
+### From source
+
+```bash
+go build -o sshx .
+```
+
+### Shell completion
+
+After installing, enable completion (see `sshx completion --help` for other
+shells and permanent setup):
+
+```bash
+source <(sshx completion bash)
+```
+
+## Quick Start
+
+### 1) Authenticate with a repo
+
+```bash
+sshx auth git@github.com:USER/sshx-profiles.git
 ```
 
 This creates or clones the repo, registers you in `users.json`, and sets up TOTP MFA.
 
-### 3) Add a server
+### 2) Add a server
 
 ```bash
-./sshx add prod --host 1.2.3.4 --user ubuntu
+sshx add prod --host 1.2.3.4 --user ubuntu
 ```
 
-### 4) List servers
+### 3) List servers
 
 ```bash
-./sshx list
+sshx list
 ```
 
-### 5) Connect
+### 4) Connect
 
 ```bash
-./sshx prod
+sshx prod
 ```
 
 ---
